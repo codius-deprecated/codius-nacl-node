@@ -65,11 +65,8 @@ Handle<String> ReadFile(v8::Isolate* isolate, char const* file_name)
 void WriteMessage (int const& fd, char const* message)
 {
     char const newline = '\n';
-    char const quote = '\'';
 
-    //write (fd, &quote, 1);
     write (fd, message, strlen(message));
-    //write (fd, &quote, 1);
     write (fd, &newline, 1);
 }
 
@@ -92,13 +89,6 @@ void ReadMessage (Isolate* isolate, int const& fd, Handle<String> *message)
         bytes_read = read(fd, buf, sizeof(buf));        
         *message = String::Concat (*message, String::NewFromUtf8(isolate, buf, String::kNormalString, bytes_read));
     } while (bytes_read==sizeof(buf));
-
-    // write (3, buf, bytes_read);
-    // char buf[1024];
-    char const* str="\"New message:\"\n";
-    write (3, str, strlen(str));
-    (*message)->WriteUtf8(buf);
-    write (3, &buf, (*message)->Utf8Length());
 }
 
 
@@ -134,8 +124,6 @@ void *ReadMessages (Isolate *isolate)
 */
 static void PostMessageCallback (FunctionCallbackInfo<Value> const& args)
 {
-    char const* str="\"PostMessage\"\n";
-    write (3, str, strlen(str));
     if (args.Length() == 1 && args[0]->IsString())
     {
         String::Utf8Value message(args[0]);
@@ -165,9 +153,6 @@ void run_js_contract(char const* contract)
     Context::Scope context_scope(context);
 
     // Create a string containing the JavaScript source code.
-    //Handle<String> source = String::NewFromUtf8(isolate, "Actual JavaScript code as string");
-    //Handle<String> source = String::NewFromUtf8(isolate, "Hello + world");
-    //Handle<String> source = ReadFile(isolate, contract);
     Handle<String> source = String::NewFromUtf8(isolate, contract);
 
     // Compile the source code.
