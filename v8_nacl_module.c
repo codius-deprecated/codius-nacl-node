@@ -30,6 +30,9 @@
 #include <queue>
 #include "v8.h"
 
+#include "src/cpp/base-object.h"
+#include "src/cpp/base-object-inl.h"
+
 
 using namespace v8;
 
