@@ -13,7 +13,10 @@ export NACL_SDK_ROOT=<your-path>/nacl_sdk/pepper_<version>
 Run the test:
 
 ```sh
-node test-contract-runner.js test-contract.js $NACL_SDK_ROOT/tools/sel_ldr_x86_32 -h 3:3 -a -- $NACL_SDK_ROOT/toolchain/linux_x86_glibc/x86_64-nacl/lib32/runnable-ld.so --library-path $NACL_SDK_ROOT/toolchain/linux_x86_glibc/x86_64-nacl/lib32:./ ./v8_nacl_module.nexe 
+node test-contract-runner.js test-contract.js $NACL_SDK_ROOT/tools/sel_ldr_x86_32\
+-h 3:3 -a -- $NACL_SDK_ROOT/toolchain/linux_x86_glibc/x86_64-nacl/lib32/runnable-ld.so\
+--library-path ./:$NACL_SDK_ROOT/toolchain/linux_x86_glibc/x86_64-nacl/lib32\
+./v8_nacl_module.nexe 
 ```
 
 ### To build ported V8:
@@ -27,7 +30,6 @@ https://code.google.com/p/v8/wiki/BuildingWithGYP
 export V8_ROOT=<your-path>/v8/v8
 
 make nacl_ia32 $V8_ROOT
-
 ```
 
 Build NaCl module with V8:
