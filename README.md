@@ -35,7 +35,8 @@ https://code.google.com/p/v8/wiki/BuildingWithGYP
 ```sh
 export V8_ROOT=<your-path>/v8/v8
 
-make nacl_ia32 $V8_ROOT
+cd $V8_ROOT
+make library=shared nacl_ia32.release
 ```
 
 Build NaCl module with V8:
