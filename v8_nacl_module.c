@@ -40,7 +40,7 @@ Handle<String> ReadFile(v8::Isolate* isolate, char const* file_name)
     FILE* file = fopen(file_name, "rb");
     if (file == NULL)
         return v8::Handle<v8::String>();
- 
+
     fseek(file, 0, SEEK_END);
     int size = ftell(file);
     rewind(file);
@@ -74,7 +74,7 @@ void WriteMessage (int const& fd, char const* message)
 /** Read message from outside the sandbox.
       Return message as a V8 string.
 */
-void ReadMessage (Isolate* isolate, int const& fd, Handle<String> *message)
+void ReadMessage (Isolate* isolate, FILE *pFile, Handle<String> *message)
 {
     char buf[1024];
     size_t bytes_read;
@@ -86,8 +86,10 @@ void ReadMessage (Isolate* isolate, int const& fd, Handle<String> *message)
 
     do
     {
-        bytes_read = read(fd, buf, sizeof(buf));        
-        *message = String::Concat (*message, String::NewFromUtf8(isolate, buf, String::kNormalString, bytes_read));
+        // fgets(buf, sizeof(buf), pFile);
+        bytes_read = read(3, buf, sizeof(buf));
+        *message = String::Concat (*message, String::NewFromUtf8(isolate, buf, String::kNormalString, strlen(buf)));
+    //} while (buf[strlen(buf)-1]!='\n');
     } while (bytes_read==sizeof(buf));
 }
 
@@ -102,6 +104,7 @@ void *ReadMessages (Isolate *isolate)
     Handle<Value> args[1];
     Handle<String> message;
     Handle<Value> value = isolate->GetCurrentContext()->Global()->Get(String::NewFromUtf8(isolate, "onmessage"));
+    FILE *pFile = fdopen(3, "r");
 
     if (value->IsFunction())
     {
@@ -109,7 +112,7 @@ void *ReadMessages (Isolate *isolate)
 
         while (1)
         {
-            ReadMessage (isolate, 3, &message);
+            ReadMessage (isolate, pFile, &message);
             args[0] = message;
 
             func->Call(isolate->GetCurrentContext()->Global(), 1, args);
