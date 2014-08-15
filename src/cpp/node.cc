@@ -1605,35 +1605,6 @@ void Init(int* argc,
   // even when we need it to access it from another (debugger) thread.
   node_isolate = Isolate::GetCurrent();
 
-#ifdef __POSIX__
-  // Raise the open file descriptor limit.
-  {  // NOLINT (whitespace/braces)
-    struct rlimit lim;
-    if (getrlimit(RLIMIT_NOFILE, &lim) == 0 && lim.rlim_cur != lim.rlim_max) {
-      // Do a binary search for the limit.
-      rlim_t min = lim.rlim_cur;
-      rlim_t max = 1 << 20;
-      // But if there's a defined upper bound, don't search, just set it.
-      if (lim.rlim_max != RLIM_INFINITY) {
-        min = lim.rlim_max;
-        max = lim.rlim_max;
-      }
-      do {
-        lim.rlim_cur = min + (max - min) / 2;
-        if (setrlimit(RLIMIT_NOFILE, &lim)) {
-          max = lim.rlim_cur;
-        } else {
-          min = lim.rlim_cur;
-        }
-      } while (min + 1 < max);
-    }
-  }
-  // Ignore SIGPIPE
-  RegisterSignalHandler(SIGPIPE, SIG_IGN);
-  RegisterSignalHandler(SIGINT, SignalExit, true);
-  RegisterSignalHandler(SIGTERM, SignalExit, true);
-#endif  // __POSIX__
-
   V8::SetFatalErrorHandler(node::OnFatalError);
   V8::AddMessageListener(OnMessage);
 }
@@ -1662,8 +1633,9 @@ Environment* CreateEnvironment(Isolate* isolate,
 }
 
 int Start(int argc, char** argv) {
-  int exec_argc = 0;
+  int exec_argc;
   const char** exec_argv;
+  Init(&argc, const_cast<const char**>(argv), &exec_argc, &exec_argv);
 
   int code;
   V8::Initialize();
@@ -1678,7 +1650,13 @@ int Start(int argc, char** argv) {
     env = NULL;
   }
 
+  CHECK_NE(node_isolate, NULL);
+  node_isolate->Dispose();
+  node_isolate = NULL;
   V8::Dispose();
+
+  delete[] exec_argv;
+  exec_argv = NULL;
 
   return code;
 }
