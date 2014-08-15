@@ -19,18 +19,14 @@
 // OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
 // USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-#ifndef node_script_h
-#define node_script_h
-
 #include "node.h"
-#include "node_object_wrap.h"
-#include "v8.h"
-#include "uv.h"
+#include "node_buffer.h"
+#include "node_constants.h"
+#include "node_javascript.h"
+#include "node_version.h"
+
 
 namespace node {
 
 
-void InitEvals(v8::Handle<v8::Object> target);
-
-} // namespace node
-#endif //  node_script_h
+}  // namespace node
