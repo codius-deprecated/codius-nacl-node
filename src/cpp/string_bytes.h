@@ -27,8 +27,6 @@
 #include "v8.h"
 #include "node.h"
 
-#define NODE_DEPRECATED(msg, fn) V8_DEPRECATED(msg, fn)
-
 namespace node {
 
 extern int WRITE_UTF8_FLAGS;

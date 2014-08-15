@@ -53,11 +53,46 @@ inline v8::Local<TypeName> WeakPersistentToLocal(
   return v8::Local<TypeName>::New(isolate, persistent);
 }
 
+inline v8::Local<v8::String> OneByteString(v8::Isolate* isolate,
+                                           const char* data,
+                                           int length) {
+  return v8::String::NewFromOneByte(isolate,
+                                    reinterpret_cast<const uint8_t*>(data),
+                                    v8::String::kNormalString,
+                                    length);
+}
+
+inline v8::Local<v8::String> OneByteString(v8::Isolate* isolate,
+                                           const signed char* data,
+                                           int length) {
+  return v8::String::NewFromOneByte(isolate,
+                                    reinterpret_cast<const uint8_t*>(data),
+                                    v8::String::kNormalString,
+                                    length);
+}
+
+inline v8::Local<v8::String> OneByteString(v8::Isolate* isolate,
+                                           const unsigned char* data,
+                                           int length) {
+  return v8::String::NewFromOneByte(isolate,
+                                    reinterpret_cast<const uint8_t*>(data),
+                                    v8::String::kNormalString,
+                                    length);
+}
+
 template <typename TypeName>
 void Wrap(v8::Local<v8::Object> object, TypeName* pointer) {
   assert(!object.IsEmpty());
   assert(object->InternalFieldCount() > 0);
   object->SetAlignedPointerInInternalField(0, pointer);
+}
+
+template <typename TypeName>
+TypeName* Unwrap(v8::Local<v8::Object> object) {
+  assert(!object.IsEmpty());
+  assert(object->InternalFieldCount() > 0);
+  void* pointer = object->GetAlignedPointerFromInternalField(0);
+  return static_cast<TypeName*>(pointer);
 }
 
 }  // namespace node

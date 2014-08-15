@@ -19,48 +19,37 @@
 // OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
 // USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-#ifndef SRC_BASE_OBJECT_H_
-#define SRC_BASE_OBJECT_H_
+#ifndef SRC_NODE_COUNTERS_H_
+#define SRC_NODE_COUNTERS_H_
 
-#include "env.h"
+#include "node.h"
+
+#ifdef HAVE_PERFCTR
+#include "node_win32_perfctr_provider.h"
+#else
+#define NODE_COUNTER_ENABLED() (false)
+#define NODE_COUNT_HTTP_SERVER_REQUEST()
+#define NODE_COUNT_HTTP_SERVER_RESPONSE()
+#define NODE_COUNT_HTTP_CLIENT_REQUEST()
+#define NODE_COUNT_HTTP_CLIENT_RESPONSE()
+#define NODE_COUNT_SERVER_CONN_OPEN()
+#define NODE_COUNT_SERVER_CONN_CLOSE()
+#define NODE_COUNT_NET_BYTES_SENT(bytes)
+#define NODE_COUNT_NET_BYTES_RECV(bytes)
+#define NODE_COUNT_GET_GC_RAWTIME()
+#define NODE_COUNT_GC_PERCENTTIME()
+#define NODE_COUNT_PIPE_BYTES_SENT(bytes)
+#define NODE_COUNT_PIPE_BYTES_RECV(bytes)
+#endif
+
 #include "v8.h"
+#include "env.h"
 
 namespace node {
 
-class BaseObject {
- public:
-  BaseObject(Environment* env, v8::Local<v8::Object> handle);
-  ~BaseObject();
-
-  // Returns the wrapped object.  Illegal to call in your destructor.
-  inline v8::Local<v8::Object> object();
-
-  // Parent class is responsible to Dispose.
-  inline v8::Persistent<v8::Object>& persistent();
-
-  inline Environment* env() const;
-
-  // The handle_ must have an internal field count > 0, and the first
-  // index is reserved for a pointer to this class. This is an
-  // implicit requirement, but Node does not have a case where it's
-  // required that MakeWeak() be called and the internal field not
-  // be set.
-  template <typename Type>
-  inline void MakeWeak(Type* ptr);
-
-  inline void ClearWeak();
-
- private:
-  BaseObject();
-
-  template <typename Type>
-  static inline void WeakCallback(
-      const v8::WeakCallbackData<v8::Object, Type>& data);
-
-  v8::Persistent<v8::Object> handle_;
-  Environment* env_;
-};
+void InitPerfCounters(Environment* env, v8::Handle<v8::Object> target);
+void TermPerfCounters(v8::Handle<v8::Object> target);
 
 }  // namespace node
 
-#endif  // SRC_BASE_OBJECT_H_
+#endif  // SRC_NODE_COUNTERS_H_

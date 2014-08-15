@@ -19,48 +19,44 @@
 // OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
 // USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-#ifndef SRC_BASE_OBJECT_H_
-#define SRC_BASE_OBJECT_H_
+#ifndef SRC_PIPE_WRAP_H_
+#define SRC_PIPE_WRAP_H_
 
 #include "env.h"
-#include "v8.h"
+#include "stream_wrap.h"
 
 namespace node {
 
-class BaseObject {
+class PipeWrap : public StreamWrap {
  public:
-  BaseObject(Environment* env, v8::Local<v8::Object> handle);
-  ~BaseObject();
+  //uv_pipe_t* UVHandle();
 
-  // Returns the wrapped object.  Illegal to call in your destructor.
-  inline v8::Local<v8::Object> object();
-
-  // Parent class is responsible to Dispose.
-  inline v8::Persistent<v8::Object>& persistent();
-
-  inline Environment* env() const;
-
-  // The handle_ must have an internal field count > 0, and the first
-  // index is reserved for a pointer to this class. This is an
-  // implicit requirement, but Node does not have a case where it's
-  // required that MakeWeak() be called and the internal field not
-  // be set.
-  template <typename Type>
-  inline void MakeWeak(Type* ptr);
-
-  inline void ClearWeak();
+  static v8::Local<v8::Object> Instantiate(Environment* env);
+  static void Initialize(v8::Handle<v8::Object> target,
+                         v8::Handle<v8::Value> unused,
+                         v8::Handle<v8::Context> context);
 
  private:
-  BaseObject();
+  PipeWrap(Environment* env, v8::Handle<v8::Object> object, bool ipc);
 
-  template <typename Type>
-  static inline void WeakCallback(
-      const v8::WeakCallbackData<v8::Object, Type>& data);
+  static void New(const v8::FunctionCallbackInfo<v8::Value>& args);
+  static void Bind(const v8::FunctionCallbackInfo<v8::Value>& args);
+  static void Listen(const v8::FunctionCallbackInfo<v8::Value>& args);
+  static void Connect(const v8::FunctionCallbackInfo<v8::Value>& args);
+  static void Open(const v8::FunctionCallbackInfo<v8::Value>& args);
 
-  v8::Persistent<v8::Object> handle_;
-  Environment* env_;
+#ifdef _WIN32
+  static void SetPendingInstances(
+      const v8::FunctionCallbackInfo<v8::Value>& args);
+#endif
+
+  static void OnConnection(std::fstream* handle, int status);
+
+  //uv_pipe_t handle_;
 };
+
 
 }  // namespace node
 
-#endif  // SRC_BASE_OBJECT_H_
+
+#endif  // SRC_PIPE_WRAP_H_

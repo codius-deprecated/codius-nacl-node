@@ -23,15 +23,14 @@
 #define SRC_STREAM_WRAP_H_
 
 #include "base-object.h"
+#include "env.h"
 #include "string_bytes.h"
 #include "v8.h"
 
-#include <iostream>
+#include <fstream>
+#include <string>
 
 namespace node {
-
-// Forward declaration
-class StreamWrap;
 
 class StreamWrap : public BaseObject {
  public:
@@ -51,16 +50,21 @@ class StreamWrap : public BaseObject {
 
   static void SetBlocking(const v8::FunctionCallbackInfo<v8::Value>& args);
 
-  inline std::iostream* stream() const {
+  inline std::fstream* stream() const {
     return stream_;
+  }
+
+  inline int fd() const {
+    return fd_;
   }
 
  protected:
   static size_t WriteBuffer(v8::Handle<v8::Value> val, std::string* buf);
 
-  StreamWrap(v8::Isolate isolate,
+  StreamWrap(Environment* env,
              v8::Local<v8::Object> object,
-             std::iostream* stream);
+             std::fstream* stream,
+             int fd);
 
   ~StreamWrap() { }
 
@@ -72,7 +76,8 @@ class StreamWrap : public BaseObject {
   template <enum encoding encoding>
   static void WriteStringImpl(const v8::FunctionCallbackInfo<v8::Value>& args);
 
-  std::iostream* const stream_;
+  std::fstream* const stream_;
+  int fd_;
 };
 
 

@@ -20,15 +20,13 @@
 // USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "stream_wrap.h"
+#include "base-object.h"
+#include "base-object-inl.h"
 #include "env-inl.h"
 #include "env.h"
-#include "handle_wrap.h"
 #include "node_buffer.h"
 #include "node_counters.h"
 #include "pipe_wrap.h"
-#include "req_wrap.h"
-#include "tcp_wrap.h"
-#include "udp_wrap.h"
 #include "util.h"
 #include "util-inl.h"
 
@@ -58,12 +56,11 @@ using v8::Value;
 
 StreamWrap::StreamWrap(Environment* env,
                        Local<Object> object,
-                       uv_stream_t* stream,
-                       AsyncWrap::ProviderType provider)
-    : HandleWrap(env, object, reinterpret_cast<uv_handle_t*>(stream), provider),
+                       std::fstream* stream,
+                       int fd)
+    : BaseObject(env, object),
       stream_(stream),
-      default_callbacks_(this),
-      callbacks_(&default_callbacks_) {
+      fd_(fd) {
 }
 
 
@@ -72,11 +69,7 @@ void StreamWrap::GetFD(Local<String>, const PropertyCallbackInfo<Value>& args) {
   Environment* env = Environment::GetCurrent(args.GetIsolate());
   HandleScope scope(env->isolate());
   StreamWrap* wrap = Unwrap<StreamWrap>(args.Holder());
-  int fd = -1;
-  if (wrap != NULL && wrap->stream() != NULL) {
-    fd = wrap->stream()->io_watcher.fd;
-  }
-  args.GetReturnValue().Set(fd);
+  args.GetReturnValue().Set(wrap->fd());
 #endif
 }
 
@@ -117,26 +110,6 @@ void StreamWrap::OnAlloc(uv_handle_t* handle,
   StreamWrap* wrap = static_cast<StreamWrap*>(handle->data);
   assert(wrap->stream() == reinterpret_cast<uv_stream_t*>(handle));
   wrap->callbacks()->DoAlloc(handle, suggested_size, buf);
-}
-
-
-template <class WrapType, class UVType>
-static Local<Object> AcceptHandle(Environment* env, uv_stream_t* pipe) {
-  EscapableHandleScope scope(env->isolate());
-  Local<Object> wrap_obj;
-  UVType* handle;
-
-  wrap_obj = WrapType::Instantiate(env);
-  if (wrap_obj.IsEmpty())
-    return Local<Object>();
-
-  WrapType* wrap = Unwrap<WrapType>(wrap_obj);
-  handle = wrap->UVHandle();
-
-  if (uv_accept(pipe, reinterpret_cast<uv_stream_t*>(handle)))
-    abort();
-
-  return scope.Escape(wrap_obj);
 }
 
 

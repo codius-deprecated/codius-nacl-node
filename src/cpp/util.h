@@ -26,6 +26,31 @@
 
 namespace node {
 
+#define FIXED_ONE_BYTE_STRING(isolate, string)                                \
+  (node::OneByteString((isolate), (string), sizeof(string) - 1))
+
+#define DISALLOW_COPY_AND_ASSIGN(TypeName)                                    \
+  void operator=(const TypeName&);                                            \
+  TypeName(const TypeName&)
+
+#if defined(NDEBUG)
+# define ASSERT(expression)
+# define CHECK(expression)                                                    \
+  do {                                                                        \
+    if (!(expression)) abort();                                               \
+  } while (0)
+#else
+# define ASSERT(expression)  assert(expression)
+# define CHECK(expression)   assert(expression)
+#endif
+
+#define CHECK_EQ(a, b) CHECK((a) == (b))
+#define CHECK_GE(a, b) CHECK((a) >= (b))
+#define CHECK_GT(a, b) CHECK((a) > (b))
+#define CHECK_LE(a, b) CHECK((a) <= (b))
+#define CHECK_LT(a, b) CHECK((a) < (b))
+#define CHECK_NE(a, b) CHECK((a) != (b))
+
 // If persistent.IsWeak() == false, then do not call persistent.Reset()
 // while the returned Local<T> is still in scope, it will destroy the
 // reference to the object.
@@ -47,6 +72,20 @@ template <class TypeName>
 inline v8::Local<TypeName> WeakPersistentToLocal(
     v8::Isolate* isolate,
     const v8::Persistent<TypeName>& persistent);
+
+// Convenience wrapper around v8::String::NewFromOneByte().
+inline v8::Local<v8::String> OneByteString(v8::Isolate* isolate,
+                                           const char* data,
+                                           int length = -1);
+
+// For the people that compile with -funsigned-char.
+inline v8::Local<v8::String> OneByteString(v8::Isolate* isolate,
+                                           const signed char* data,
+                                           int length = -1);
+
+inline v8::Local<v8::String> OneByteString(v8::Isolate* isolate,
+                                           const unsigned char* data,
+                                           int length = -1);
 
 inline void Wrap(v8::Local<v8::Object> object, void* pointer);
 

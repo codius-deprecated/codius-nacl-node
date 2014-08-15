@@ -19,48 +19,43 @@
 // OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
 // USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-#ifndef SRC_BASE_OBJECT_H_
-#define SRC_BASE_OBJECT_H_
+#include "node.h"
 
-#include "env.h"
-#include "v8.h"
+#include <stdlib.h>
 
 namespace node {
 
-class BaseObject {
- public:
-  BaseObject(Environment* env, v8::Local<v8::Object> handle);
-  ~BaseObject();
+static node_module* modpending;
+static node_module* modlist_builtin;
+static node_module* modlist_addon;
 
-  // Returns the wrapped object.  Illegal to call in your destructor.
-  inline v8::Local<v8::Object> object();
+extern "C" void node_module_register(void* m) {
+  struct node_module* mp = reinterpret_cast<struct node_module*>(m);
 
-  // Parent class is responsible to Dispose.
-  inline v8::Persistent<v8::Object>& persistent();
+  if (mp->nm_flags & NM_F_BUILTIN) {
+    mp->nm_link = modlist_builtin;
+    modlist_builtin = mp;
+  } else {
+    assert(modpending == NULL);
+    modpending = mp;
+  }
+}
 
-  inline Environment* env() const;
+static void OnFatalError(const char* location, const char* message) {
+  if (location) {
+    fprintf(stderr, "FATAL ERROR: %s %s\n", location, message);
+  } else {
+    fprintf(stderr, "FATAL ERROR: %s\n", message);
+  }
+  fflush(stderr);
+  abort();
+}
 
-  // The handle_ must have an internal field count > 0, and the first
-  // index is reserved for a pointer to this class. This is an
-  // implicit requirement, but Node does not have a case where it's
-  // required that MakeWeak() be called and the internal field not
-  // be set.
-  template <typename Type>
-  inline void MakeWeak(Type* ptr);
 
-  inline void ClearWeak();
-
- private:
-  BaseObject();
-
-  template <typename Type>
-  static inline void WeakCallback(
-      const v8::WeakCallbackData<v8::Object, Type>& data);
-
-  v8::Persistent<v8::Object> handle_;
-  Environment* env_;
-};
+NO_RETURN void FatalError(const char* location, const char* message) {
+  OnFatalError(location, message);
+  // to supress compiler warning
+  abort();
+}
 
 }  // namespace node
-
-#endif  // SRC_BASE_OBJECT_H_

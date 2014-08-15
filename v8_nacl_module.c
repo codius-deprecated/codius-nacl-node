@@ -30,11 +30,6 @@
 #include <queue>
 #include "v8.h"
 
-#include "src/cpp/base-object.h"
-#include "src/cpp/base-object-inl.h"
-
-#include "src/cpp/stream_wrap.h"
-
 
 using namespace v8;
 
