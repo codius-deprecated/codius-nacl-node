@@ -28,5 +28,8 @@
 
 namespace node {
 
+int Start(int argc, char** argv) {
+  return 0;
+}
 
 }  // namespace node

@@ -22,10 +22,8 @@
 #ifndef SRC_ENV_H_
 #define SRC_ENV_H_
 
-#include "ares.h"
 #include "tree.h"
 #include "util.h"
-#include "uv.h"
 #include "v8.h"
 #include "queue.h"
 
@@ -271,19 +269,6 @@ namespace node {
   V(tty_constructor_template, v8::FunctionTemplate)                           \
   V(udp_constructor_function, v8::Function)                                   \
 
-class Environment;
-
-// TODO(bnoordhuis) Rename struct, the ares_ prefix implies it's part
-// of the c-ares API while the _t suffix implies it's a typedef.
-struct ares_task_t {
-  Environment* env;
-  ares_socket_t sock;
-  uv_poll_t poll_watcher;
-  RB_ENTRY(ares_task_t) node;
-};
-
-RB_HEAD(ares_task_list, ares_task_t);
-
 class Environment {
  public:
   class AsyncListener {
@@ -373,30 +358,11 @@ class Environment {
   void AssignToContext(v8::Local<v8::Context> context);
 
   inline v8::Isolate* isolate() const;
-  inline uv_loop_t* event_loop() const;
-  inline bool has_async_listener() const;
   inline bool in_domain() const;
   inline uint32_t watched_providers() const;
 
-  static inline Environment* from_immediate_check_handle(uv_check_t* handle);
-  inline uv_check_t* immediate_check_handle();
-  inline uv_idle_t* immediate_idle_handle();
-
-  static inline Environment* from_idle_prepare_handle(uv_prepare_t* handle);
-  inline uv_prepare_t* idle_prepare_handle();
-
-  static inline Environment* from_idle_check_handle(uv_check_t* handle);
-  inline uv_check_t* idle_check_handle();
-
-  inline AsyncListener* async_listener();
   inline DomainFlag* domain_flag();
   inline TickInfo* tick_info();
-
-  static inline Environment* from_cares_timer_handle(uv_timer_t* handle);
-  inline uv_timer_t* cares_timer_handle();
-  inline ares_channel cares_channel();
-  inline ares_channel* cares_channel_ptr();
-  inline ares_task_list* cares_task_list();
 
   inline bool using_smalloc_alloc_cb() const;
   inline void set_using_smalloc_alloc_cb(bool value);
@@ -454,16 +420,8 @@ class Environment {
 
   v8::Isolate* const isolate_;
   IsolateData* const isolate_data_;
-  uv_check_t immediate_check_handle_;
-  uv_idle_t immediate_idle_handle_;
-  uv_prepare_t idle_prepare_handle_;
-  uv_check_t idle_check_handle_;
-  AsyncListener async_listener_count_;
   DomainFlag domain_flag_;
   TickInfo tick_info_;
-  uv_timer_t cares_timer_handle_;
-  ares_channel cares_channel_;
-  ares_task_list cares_task_list_;
   bool using_smalloc_alloc_cb_;
   bool using_domains_;
   QUEUE gc_tracker_queue_;
@@ -499,7 +457,6 @@ class Environment {
    public:
     static inline IsolateData* GetOrCreate(v8::Isolate* isolate);
     inline void Put();
-    inline uv_loop_t* event_loop() const;
 
     // Defined in src/node_profiler.cc.
     void StartGarbageCollectionTracking(Environment* env);
@@ -525,7 +482,6 @@ class Environment {
     void BeforeGarbageCollection(v8::GCType type, v8::GCCallbackFlags flags);
     void AfterGarbageCollection(v8::GCType type, v8::GCCallbackFlags flags);
 
-    uv_loop_t* const event_loop_;
     v8::Isolate* const isolate_;
 
 #define V(PropertyName, StringValue)                                          \
