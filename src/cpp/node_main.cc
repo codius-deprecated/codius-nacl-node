@@ -62,6 +62,7 @@ int wmain(int argc, wchar_t *wargv[]) {
 #else
 // UNIX
 int main(int argc, char *argv[]) {
+  printf("Hello!\n");
   return node::Start(argc, argv);
 }
 #endif

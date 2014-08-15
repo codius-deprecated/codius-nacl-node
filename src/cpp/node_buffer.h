@@ -108,7 +108,6 @@ static inline bool IsWithinBounds(size_t off, size_t len, size_t max) {
 // Internal. Not for public consumption. We can't define these in
 // src/node_internals.h due to a circular dependency issue with
 // the smalloc.h and node_internals.h headers.
-#if defined(NODE_WANT_INTERNALS)
 v8::Local<v8::Object> New(Environment* env, size_t size);
 v8::Local<v8::Object> New(Environment* env, const char* data, size_t len);
 v8::Local<v8::Object> New(Environment* env,
@@ -117,7 +116,6 @@ v8::Local<v8::Object> New(Environment* env,
                           smalloc::FreeCallback callback,
                           void* hint);
 v8::Local<v8::Object> Use(Environment* env, char* data, uint32_t length);
-#endif  // defined(NODE_WANT_INTERNALS)
 
 }  // namespace Buffer
 }  // namespace node

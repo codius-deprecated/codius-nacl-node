@@ -1,0 +1,12 @@
+- No libuv
+- No process._needImmediateCallback
+- Can't spawn child processes
+- No --debug
+- No process._startProfilerIdleNotifier and process._stopProfilerIdleNotifier
+- process.umask() is a noop and always returns 2
+- process.kill() is a noop
+- No process.hrtime()
+- No native extensions (process.dlopen() is disabled)
+- No process._setupAsyncListener
+- No process._setupNextTick
+- No process._setupDomainUse

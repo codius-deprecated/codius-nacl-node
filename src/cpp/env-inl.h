@@ -26,7 +26,6 @@
 #include "node.h"
 #include "util.h"
 #include "util-inl.h"
-#include "uv.h"
 #include "v8.h"
 
 #include <stddef.h>
@@ -92,8 +91,7 @@ inline void Environment::IsolateData::Put() {
 }
 
 inline Environment::IsolateData::IsolateData(v8::Isolate* isolate)
-    : event_loop_(uv_default_loop()),
-      isolate_(isolate),
+    : isolate_(isolate),
 #define V(PropertyName, StringValue)                                          \
     PropertyName ## _(isolate, FIXED_ONE_BYTE_STRING(isolate, StringValue)),
     PER_ISOLATE_STRING_PROPERTIES(V)
@@ -102,33 +100,8 @@ inline Environment::IsolateData::IsolateData(v8::Isolate* isolate)
   QUEUE_INIT(&gc_tracker_queue_);
 }
 
-inline uv_loop_t* Environment::IsolateData::event_loop() const {
-  return event_loop_;
-}
-
 inline v8::Isolate* Environment::IsolateData::isolate() const {
   return isolate_;
-}
-
-inline Environment::AsyncListener::AsyncListener() {
-  for (int i = 0; i < kFieldsCount; ++i)
-    fields_[i] = 0;
-}
-
-inline uint32_t* Environment::AsyncListener::fields() {
-  return fields_;
-}
-
-inline int Environment::AsyncListener::fields_count() const {
-  return kFieldsCount;
-}
-
-inline bool Environment::AsyncListener::has_listener() const {
-  return fields_[kHasListener] > 0;
-}
-
-inline uint32_t Environment::AsyncListener::watched_providers() const {
-  return fields_[kWatchedProviders];
 }
 
 inline Environment::DomainFlag::DomainFlag() {
@@ -236,7 +209,6 @@ inline Environment::Environment(v8::Local<v8::Context> context)
   v8::Context::Scope context_scope(context);
   set_binding_cache_object(v8::Object::New(isolate()));
   set_module_load_list_array(v8::Array::New(isolate()));
-  RB_INIT(&cares_task_list_);
   QUEUE_INIT(&gc_tracker_queue_);
 }
 
@@ -258,58 +230,10 @@ inline v8::Isolate* Environment::isolate() const {
   return isolate_;
 }
 
-inline bool Environment::has_async_listener() const {
-  // The const_cast is okay, it doesn't violate conceptual const-ness.
-  return const_cast<Environment*>(this)->async_listener()->has_listener();
-}
-
-inline uint32_t Environment::watched_providers() const {
-  // The const_cast is okay, it doesn't violate conceptual const-ness.
-  return const_cast<Environment*>(this)->async_listener()->watched_providers();
-}
-
 inline bool Environment::in_domain() const {
   // The const_cast is okay, it doesn't violate conceptual const-ness.
   return using_domains() &&
          const_cast<Environment*>(this)->domain_flag()->count() > 0;
-}
-
-inline Environment* Environment::from_immediate_check_handle(
-    uv_check_t* handle) {
-  return ContainerOf(&Environment::immediate_check_handle_, handle);
-}
-
-inline uv_check_t* Environment::immediate_check_handle() {
-  return &immediate_check_handle_;
-}
-
-inline uv_idle_t* Environment::immediate_idle_handle() {
-  return &immediate_idle_handle_;
-}
-
-inline Environment* Environment::from_idle_prepare_handle(
-    uv_prepare_t* handle) {
-  return ContainerOf(&Environment::idle_prepare_handle_, handle);
-}
-
-inline uv_prepare_t* Environment::idle_prepare_handle() {
-  return &idle_prepare_handle_;
-}
-
-inline Environment* Environment::from_idle_check_handle(uv_check_t* handle) {
-  return ContainerOf(&Environment::idle_check_handle_, handle);
-}
-
-inline uv_check_t* Environment::idle_check_handle() {
-  return &idle_check_handle_;
-}
-
-inline uv_loop_t* Environment::event_loop() const {
-  return isolate_data()->event_loop();
-}
-
-inline Environment::AsyncListener* Environment::async_listener() {
-  return &async_listener_count_;
 }
 
 inline Environment::DomainFlag* Environment::domain_flag() {
@@ -342,27 +266,6 @@ inline bool Environment::printed_error() const {
 
 inline void Environment::set_printed_error(bool value) {
   printed_error_ = value;
-}
-
-inline Environment* Environment::from_cares_timer_handle(uv_timer_t* handle) {
-  return ContainerOf(&Environment::cares_timer_handle_, handle);
-}
-
-inline uv_timer_t* Environment::cares_timer_handle() {
-  return &cares_timer_handle_;
-}
-
-inline ares_channel Environment::cares_channel() {
-  return cares_channel_;
-}
-
-// Only used in the call to ares_init_options().
-inline ares_channel* Environment::cares_channel_ptr() {
-  return &cares_channel_;
-}
-
-inline ares_task_list* Environment::cares_task_list() {
-  return &cares_task_list_;
 }
 
 inline Environment::IsolateData* Environment::isolate_data() const {
@@ -410,14 +313,6 @@ inline void Environment::ThrowErrnoException(int errorno,
                                              const char* path) {
   isolate()->ThrowException(
       ErrnoException(isolate(), errorno, syscall, message, path));
-}
-
-inline void Environment::ThrowUVException(int errorno,
-                                          const char* syscall,
-                                          const char* message,
-                                          const char* path) {
-  isolate()->ThrowException(
-      UVException(isolate(), errorno, syscall, message, path));
 }
 
 #define V(PropertyName, StringValue)                                          \

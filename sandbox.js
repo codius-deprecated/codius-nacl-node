@@ -58,10 +58,10 @@ Sandbox.prototype.run = function(manifest_hash, code) {
 
 	// Set up stdin, stdout, stderr, ipc
 	if (self._stdin) {
-		self._stdin.pipe(self._native_client_child.stdio[0]);
+		//self._stdin.pipe(self._native_client_child.stdio[0]);
 	}
-	self._native_client_child.stdio[1].pipe(self._stdout);
-	self._native_client_child.stdio[2].pipe(self._stderr);
+	//self._native_client_child.stdio[1].pipe(self._stdout);
+	//self._native_client_child.stdio[2].pipe(self._stderr);
 	self._native_client_child.on('message', self._handleMessage.bind(self));
 	self._native_client_child.stdio[4].pipe(concat(self._translateVirtualPath.bind(self, manifest_hash)));
 };
@@ -79,9 +79,9 @@ function spawnChildToRunCode(code) {
 
 	var child = spawn(RUN_CONTRACT_COMMAND, args, { 
 	  stdio: [
-	    'pipe', 
-	    'pipe', 
-	    'pipe', 
+	    process.stdin,
+	    process.stdout,
+	    process.stderr,
 	    'ipc', 
 	    'pipe'
 	    ] 

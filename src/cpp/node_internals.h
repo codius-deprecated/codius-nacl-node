@@ -25,7 +25,6 @@
 #include "node.h"
 #include "util.h"
 #include "util-inl.h"
-#include "uv.h"
 #include "v8.h"
 
 #include <assert.h>
@@ -125,8 +124,6 @@ void AppendExceptionLine(Environment* env,
                          v8::Handle<v8::Message> message);
 
 NO_RETURN void FatalError(const char* location, const char* message);
-
-v8::Local<v8::Value> BuildStatsObject(Environment* env, const uv_stat_t* s);
 
 enum Endianness {
   kLittleEndian,  // _Not_ LITTLE_ENDIAN, clashes with endian.h.

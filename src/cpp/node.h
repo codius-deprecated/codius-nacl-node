@@ -22,6 +22,16 @@
 #ifndef SRC_NODE_H_
 #define SRC_NODE_H_
 
+#if defined __arm__
+#define NODE_NACL_ARCH "arm"
+#elif defined __i686__
+#define NODE_NACL_ARCH "ia32"
+#elif defined __x86_64__
+#define NODE_NACL_ARCH "x64"
+#else
+#error "Unknown arch"
+#endif
+
 #ifdef _WIN32
 # ifndef BUILDING_NODE_EXTENSION
 #   define NODE_EXTERN __declspec(dllexport)
@@ -134,9 +144,7 @@ NODE_EXTERN v8::Handle<v8::Value> MakeCallback(
 
 }  // namespace node
 
-#if NODE_WANT_INTERNALS
 #include "node_internals.h"
-#endif
 
 #include <assert.h>
 
@@ -166,8 +174,6 @@ typedef intptr_t ssize_t;
 
 
 namespace node {
-
-NODE_EXTERN extern bool no_deprecation;
 
 NODE_EXTERN int Start(int argc, char *argv[]);
 NODE_EXTERN void Init(int* argc,

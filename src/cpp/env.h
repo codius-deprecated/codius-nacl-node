@@ -271,28 +271,6 @@ namespace node {
 
 class Environment {
  public:
-  class AsyncListener {
-   public:
-    inline uint32_t* fields();
-    inline int fields_count() const;
-    inline bool has_listener() const;
-    inline uint32_t watched_providers() const;
-
-   private:
-    friend class Environment;  // So we can call the constructor.
-    inline AsyncListener();
-
-    enum Fields {
-      kHasListener,
-      kWatchedProviders,
-      kFieldsCount
-    };
-
-    uint32_t fields_[kFieldsCount];
-
-    DISALLOW_COPY_AND_ASSIGN(AsyncListener);
-  };
-
   class DomainFlag {
    public:
     inline uint32_t* fields();
@@ -380,10 +358,6 @@ class Environment {
                                   const char* syscall = NULL,
                                   const char* message = NULL,
                                   const char* path = NULL);
-  inline void ThrowUVException(int errorno,
-                               const char* syscall = NULL,
-                               const char* message = NULL,
-                               const char* path = NULL);
 
   // Convenience methods for contextify
   inline static void ThrowError(v8::Isolate* isolate, const char* errmsg);
