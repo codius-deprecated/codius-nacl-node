@@ -1,3 +1,5 @@
+// console.log('test-contract');
+
 onmessage = function(message) {
   // var file_stuff = __readFileSync('file');
 
@@ -10,6 +12,7 @@ onmessage = function(message) {
   //postMessage (JSON.stringify(JSON.parse(message)));
 
   var call = {
+    'type': 'api',
     'api':'test_module',
     'method':'dummy'
   };
@@ -17,30 +20,25 @@ onmessage = function(message) {
 
   //var parsed_msg = JSON.parse(message);
   var parsed_msg = JSON.parse(JSON.parse(message));
-  if (1 || parsed_msg.call==='foo') {
-
-    var module_call = {
-      api:'test_module',
-      //method:parsed_msg
-      method:'callback'
-    };
-    postMessage (JSON.stringify(module_call));
+  if (parsed_msg.callback === 'foo') {
+    // console.log('Sandbox got callback foo!');
   }
 };
 
 
 var module_call = {
+  type: 'api',
   api:'test_module',
   method:'first'
 };
-
 postMessage(JSON.stringify(module_call));
 
 
 var file_stuff = __readFileSync('file');
 
-var response = {
-  'api':'test_module',
-  'method':file_stuff
-};
-postMessage (JSON.stringify(response));
+// var response = {
+//   'type': 'api',
+//   'api':'test_module',
+//   'method':file_stuff
+// };
+// postMessage (JSON.stringify(response));

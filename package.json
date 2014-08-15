@@ -3,13 +3,14 @@
   "version": "0.0.1",
   "description": "V8 Javascript engine inside Native Client",
   "scripts": {
-    "start": "node test-contract-runner.js test-contract.js $NACL_SDK_ROOT/tools/sel_ldr_x86_32 -h 3:3 -a -- $NACL_SDK_ROOT/toolchain/linux_x86_glibc/x86_64-nacl/lib32/runnable-ld.so --library-path ./:$NACL_SDK_ROOT/toolchain/linux_x86_glibc/x86_64-nacl/lib32 ./v8_nacl_module.nexe"
+    "start": "./run-contract.js test-contract.js"
   },
   "respository": {
     "type": "git",
     "url": "https://github.com/codius/codius-lang-js.git"
   },
   "dependencies": {
+    "concat-stream": "^1.4.6",
     "split": "^0.3.0"
   }
 }
