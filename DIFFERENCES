@@ -10,3 +10,4 @@
 - No process._setupAsyncListener
 - No process._setupNextTick
 - No process._setupDomainUse
+- Timeout parameter doesn't do anything in vm.runInNewContext / vm.runInThisContext

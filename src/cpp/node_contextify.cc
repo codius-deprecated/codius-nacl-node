@@ -21,7 +21,6 @@
 
 #include "node.h"
 #include "node_internals.h"
-#include "node_watchdog.h"
 #include "base-object.h"
 #include "base-object-inl.h"
 #include "env.h"
@@ -646,7 +645,7 @@ class ContextifyScript : public BaseObject {
 
     Local<Value> result;
     if (timeout != -1) {
-      Watchdog wd(env, timeout);
+      // TODO-CODIUS Reenable timeout feature
       result = script->Run();
     } else {
       result = script->Run();
