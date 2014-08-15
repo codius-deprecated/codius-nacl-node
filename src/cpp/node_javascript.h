@@ -19,48 +19,11 @@
 // OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
 // USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-#ifndef SRC_BASE_OBJECT_H_
-#define SRC_BASE_OBJECT_H_
-
-#include "env.h"
 #include "v8.h"
 
 namespace node {
 
-class BaseObject {
- public:
-  BaseObject(Environment* env, v8::Local<v8::Object> handle);
-  ~BaseObject();
-
-  // Returns the wrapped object.  Illegal to call in your destructor.
-  inline v8::Local<v8::Object> object();
-
-  // Parent class is responsible to Dispose.
-  inline v8::Persistent<v8::Object>& persistent();
-
-  inline Environment* env() const;
-
-  // The handle_ must have an internal field count > 0, and the first
-  // index is reserved for a pointer to this class. This is an
-  // implicit requirement, but Node does not have a case where it's
-  // required that MakeWeak() be called and the internal field not
-  // be set.
-  template <typename Type>
-  inline void MakeWeak(Type* ptr);
-
-  inline void ClearWeak();
-
- private:
-  BaseObject();
-
-  template <typename Type>
-  static inline void WeakCallback(
-      const v8::WeakCallbackData<v8::Object, Type>& data);
-
-  v8::Persistent<v8::Object> handle_;
-  Environment* env_;
-};
+void DefineJavaScript(v8::Handle<v8::Object> target);
+v8::Handle<v8::String> MainSource();
 
 }  // namespace node
-
-#endif  // SRC_BASE_OBJECT_H_

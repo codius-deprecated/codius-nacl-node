@@ -19,44 +19,33 @@
 // OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
 // USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-#ifndef SRC_PIPE_WRAP_H_
-#define SRC_PIPE_WRAP_H_
+#include "v8.h"
+#include "node.h"
+#include "node_natives.h"
+#include "node_string.h"
+#include <string.h>
+#if !defined(_MSC_VER)
+#include <strings.h>
+#endif
 
-#include "env.h"
-#include "stream_wrap.h"
+using namespace v8;
 
 namespace node {
 
-class PipeWrap : public StreamWrap {
- public:
-  //uv_pipe_t* UVHandle();
+Handle<String> MainSource() {
+  return BUILTIN_ASCII_ARRAY(node_native, sizeof(node_native)-1);
+}
 
-  static v8::Local<v8::Object> Instantiate(Environment* env);
-  static void Initialize(v8::Handle<v8::Object> target,
-                         v8::Handle<v8::Value> unused,
-                         v8::Handle<v8::Context> context);
+void DefineJavaScript(v8::Handle<v8::Object> target) {
+  HandleScope scope;
 
- private:
-  PipeWrap(Environment* env, v8::Handle<v8::Object> object, bool ipc);
-
-  static void New(const v8::FunctionCallbackInfo<v8::Value>& args);
-  static void Bind(const v8::FunctionCallbackInfo<v8::Value>& args);
-  static void Listen(const v8::FunctionCallbackInfo<v8::Value>& args);
-  static void Connect(const v8::FunctionCallbackInfo<v8::Value>& args);
-  static void Open(const v8::FunctionCallbackInfo<v8::Value>& args);
-
-#ifdef _WIN32
-  static void SetPendingInstances(
-      const v8::FunctionCallbackInfo<v8::Value>& args);
-#endif
-
-  static void OnConnection(std::fstream* handle, int status);
-
-  //uv_pipe_t handle_;
-};
-
+  for (int i = 0; natives[i].name; i++) {
+    if (natives[i].source != node_native) {
+      Local<String> name = String::New(natives[i].name);
+      Handle<String> source = BUILTIN_ASCII_ARRAY(natives[i].source, natives[i].source_len);
+      target->Set(name, source);
+    }
+  }
+}
 
 }  // namespace node
-
-
-#endif  // SRC_PIPE_WRAP_H_

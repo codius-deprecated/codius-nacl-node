@@ -19,43 +19,18 @@
 // OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
 // USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-#include "node.h"
+#ifndef node_script_h
+#define node_script_h
 
-#include <stdlib.h>
+#include "node.h"
+#include "node_object_wrap.h"
+#include "v8.h"
+#include "uv.h"
 
 namespace node {
 
-static node_module* modpending;
-static node_module* modlist_builtin;
-static node_module* modlist_addon;
 
-extern "C" void node_module_register(void* m) {
-  struct node_module* mp = reinterpret_cast<struct node_module*>(m);
+void InitEvals(v8::Handle<v8::Object> target);
 
-  if (mp->nm_flags & NM_F_BUILTIN) {
-    mp->nm_link = modlist_builtin;
-    modlist_builtin = mp;
-  } else {
-    assert(modpending == NULL);
-    modpending = mp;
-  }
-}
-
-static void OnFatalError(const char* location, const char* message) {
-  if (location) {
-    fprintf(stderr, "FATAL ERROR: %s %s\n", location, message);
-  } else {
-    fprintf(stderr, "FATAL ERROR: %s\n", message);
-  }
-  fflush(stderr);
-  abort();
-}
-
-
-NO_RETURN void FatalError(const char* location, const char* message) {
-  OnFatalError(location, message);
-  // to supress compiler warning
-  abort();
-}
-
-}  // namespace node
+} // namespace node
+#endif //  node_script_h

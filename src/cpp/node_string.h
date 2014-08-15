@@ -19,37 +19,45 @@
 // OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
 // USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-#ifndef SRC_NODE_COUNTERS_H_
-#define SRC_NODE_COUNTERS_H_
-
-#include "node.h"
-
-#ifdef HAVE_PERFCTR
-#include "node_win32_perfctr_provider.h"
-#else
-#define NODE_COUNTER_ENABLED() (false)
-#define NODE_COUNT_HTTP_SERVER_REQUEST()
-#define NODE_COUNT_HTTP_SERVER_RESPONSE()
-#define NODE_COUNT_HTTP_CLIENT_REQUEST()
-#define NODE_COUNT_HTTP_CLIENT_RESPONSE()
-#define NODE_COUNT_SERVER_CONN_OPEN()
-#define NODE_COUNT_SERVER_CONN_CLOSE()
-#define NODE_COUNT_NET_BYTES_SENT(bytes)
-#define NODE_COUNT_NET_BYTES_RECV(bytes)
-#define NODE_COUNT_GET_GC_RAWTIME()
-#define NODE_COUNT_GC_PERCENTTIME()
-#define NODE_COUNT_PIPE_BYTES_SENT(bytes)
-#define NODE_COUNT_PIPE_BYTES_RECV(bytes)
-#endif
+#ifndef SRC_NODE_STRING_H_
+#define SRC_NODE_STRING_H_
 
 #include "v8.h"
-#include "env.h"
 
 namespace node {
 
-void InitPerfCounters(Environment* env, v8::Handle<v8::Object> target);
-void TermPerfCounters(v8::Handle<v8::Object> target);
+#define IMMUTABLE_STRING(string_literal)                                \
+  ::node::ImmutableAsciiSource::CreateFromLiteral(                      \
+      string_literal "", sizeof(string_literal) - 1)
+#define BUILTIN_ASCII_ARRAY(array, len)                                 \
+  ::node::ImmutableAsciiSource::CreateFromLiteral(array, len)
+
+class ImmutableAsciiSource : public v8::String::ExternalAsciiStringResource {
+ public:
+  static v8::Handle<v8::String> CreateFromLiteral(const char *string_literal,
+                                                  size_t length);
+
+  ImmutableAsciiSource(const char *src, size_t src_len)
+      : buffer_(src),
+        buf_len_(src_len) {
+  }
+
+  ~ImmutableAsciiSource() {
+  }
+
+  const char *data() const {
+      return buffer_;
+  }
+
+  size_t length() const {
+      return buf_len_;
+  }
+
+ private:
+  const char *buffer_;
+  size_t buf_len_;
+};
 
 }  // namespace node
 
-#endif  // SRC_NODE_COUNTERS_H_
+#endif  // SRC_NODE_STRING_H_

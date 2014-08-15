@@ -19,60 +19,21 @@
 // OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
 // USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-#ifndef SRC_UTIL_H_
-#define SRC_UTIL_H_
-
-#include "v8.h"
-#include "string_bytes.h"
+#include "node_string.h"
 
 namespace node {
 
-class Utf8Value {
-  public:
-    explicit Utf8Value(v8::Handle<v8::Value> value)
-      : length_(0), str_(NULL) {
-      if (value.IsEmpty())
-        return;
+using namespace v8;
 
-      v8::Local<v8::String> val_ = value->ToString();
+Handle<String> ImmutableAsciiSource::CreateFromLiteral(
+    const char *string_literal,
+    size_t length) {
+  HandleScope scope;
 
-      // Allocate enough space to include the null terminator
-      size_t len = StringBytes::StorageSize(val_, UTF8) + 1;
+  Local<String> ret = String::NewExternal(new ImmutableAsciiSource(
+      string_literal,
+      length));
+  return scope.Close(ret);
+}
 
-      char* str = static_cast<char*>(calloc(1, len));
-
-      int flags = WRITE_UTF8_FLAGS;
-      flags |= ~v8::String::NO_NULL_TERMINATION;
-
-      length_ = val_->WriteUtf8(str,
-                                len,
-                                0,
-                                flags);
-
-      str_ = reinterpret_cast<char*>(str);
-    }
-
-    ~Utf8Value() {
-      free(str_);
-    }
-
-    char* operator*() {
-      return str_;
-    };
-
-    const char* operator*() const {
-      return str_;
-    };
-
-    size_t length() const {
-      return length_;
-    };
-
-  private:
-    size_t length_;
-    char* str_;
-};
-
-}  // namespace node
-
-#endif  // SRC_UTIL_H_
+}
