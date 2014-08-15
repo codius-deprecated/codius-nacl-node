@@ -40,27 +40,27 @@
     process.EventEmitter = EventEmitter; // process.EventEmitter is deprecated
 
     // Setup the tracing module
-    NativeModule.require('tracing')._nodeInitialization(process);
+    //NativeModule.require('tracing')._nodeInitialization(process);
 
     // do this good and early, since it handles errors.
-    startup.processFatal();
+    //startup.processFatal();
 
     startup.globalVariables();
-    startup.globalTimeouts();
+    //startup.globalTimeouts();
     startup.globalConsole();
 
-    startup.processAssert();
-    startup.processConfig();
-    startup.processNextTick();
-    startup.processStdio();
-    startup.processKillAndExit();
-    startup.processSignalHandlers();
+    //startup.processAssert();
+    //startup.processConfig();
+    //startup.processNextTick();
+    //startup.processStdio();
+    //startup.processKillAndExit();
+    //startup.processSignalHandlers();
 
-    startup.processChannel();
+    //startup.processChannel();
 
-    startup.processRawDebug();
+    //startup.processRawDebug();
 
-    startup.resolveArgv0();
+    //startup.resolveArgv0();
 
     // There are various modes that Node can run in. The most common two
     // are running from a script and running the REPL - but there are a few
