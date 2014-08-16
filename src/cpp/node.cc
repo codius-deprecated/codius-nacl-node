@@ -1307,6 +1307,8 @@ void SetupProcessObject(Environment* env,
   Local<Object> process_env = process_env_template->NewInstance();
   process->Set(env->env_string(), process_env);*/
 
+  process->Set(env->env_string(), Object::New(env->isolate()));
+
   READONLY_PROPERTY(process, "pid", Integer::New(env->isolate(), getpid()));
   READONLY_PROPERTY(process, "features", GetFeatures(env));
 

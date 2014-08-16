@@ -24,8 +24,6 @@ var stream = require('stream');
 var timers = require('timers');
 var util = require('util');
 var assert = require('assert');
-var cares = process.binding('cares_wrap');
-var uv = process.binding('uv');
 var Pipe = process.binding('pipe_wrap').Pipe;
 
 
@@ -47,11 +45,13 @@ function createTCP() {
 
 
 function createHandle(fd) {
-  var tty = process.binding('tty_wrap');
+  // TODO-CODIUS: Handle TCP pipes properly
+  return createPipe();
+  /*var tty = process.binding('tty_wrap');
   var type = tty.guessHandleType(fd);
   if (type === 'PIPE') return createPipe();
   if (type === 'TCP') return createTCP();
-  throw new TypeError('Unsupported fd type: ' + type);
+  throw new TypeError('Unsupported fd type: ' + type);*/
 }
 
 
@@ -1391,7 +1391,8 @@ Server.prototype.unref = function() {
 
 // TODO: isIP should be moved to the DNS code. Putting it here now because
 // this is what the legacy system did.
-exports.isIP = cares.isIP;
+// TODO-CODIUS: Add net.isIP support
+//exports.isIP = cares.isIP;
 
 
 exports.isIPv4 = function(input) {

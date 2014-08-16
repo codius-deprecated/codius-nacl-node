@@ -23,13 +23,13 @@
 #define SRC_PIPE_WRAP_H_
 
 #include "env.h"
-#include "stream_wrap.h"
+#include "base-object.h"
 
 namespace node {
 
-class PipeWrap : public StreamWrap {
+class PipeWrap : public BaseObject {
  public:
-  uv_pipe_t* UVHandle();
+  int FileDescriptor();
 
   static v8::Local<v8::Object> Instantiate(Environment* env);
   static void Initialize(v8::Handle<v8::Object> target,
@@ -40,20 +40,15 @@ class PipeWrap : public StreamWrap {
   PipeWrap(Environment* env, v8::Handle<v8::Object> object, bool ipc);
 
   static void New(const v8::FunctionCallbackInfo<v8::Value>& args);
-  static void Bind(const v8::FunctionCallbackInfo<v8::Value>& args);
-  static void Listen(const v8::FunctionCallbackInfo<v8::Value>& args);
+  //static void Bind(const v8::FunctionCallbackInfo<v8::Value>& args);
+  //static void Listen(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void Connect(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void Open(const v8::FunctionCallbackInfo<v8::Value>& args);
 
-#ifdef _WIN32
-  static void SetPendingInstances(
-      const v8::FunctionCallbackInfo<v8::Value>& args);
-#endif
+  static void WriteUtf8String(const v8::FunctionCallbackInfo<v8::Value>& args);
 
-  static void OnConnection(uv_stream_t* handle, int status);
-  static void AfterConnect(uv_connect_t* req, int status);
 
-  uv_pipe_t handle_;
+  int fd_;
 };
 
 
