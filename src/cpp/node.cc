@@ -1963,6 +1963,73 @@ void Init(int* argc,
   V8::AddMessageListener(OnMessage);
 }
 
+
+struct AtExitCallback {
+  AtExitCallback* next_;
+  void (*cb_)(void* arg);
+  void* arg_;
+};
+
+static AtExitCallback* at_exit_functions_;
+
+
+// TODO(bnoordhuis) Turn into per-context event.
+void RunAtExit(Environment* env) {
+  AtExitCallback* p = at_exit_functions_;
+  at_exit_functions_ = NULL;
+
+  while (p) {
+    AtExitCallback* q = p->next_;
+    p->cb_(p->arg_);
+    delete p;
+    p = q;
+  }
+}
+
+
+void AtExit(void (*cb)(void* arg), void* arg) {
+  AtExitCallback* p = new AtExitCallback;
+  p->cb_ = cb;
+  p->arg_ = arg;
+  p->next_ = at_exit_functions_;
+  at_exit_functions_ = p;
+}
+
+
+void EmitBeforeExit(Environment* env) {
+  Context::Scope context_scope(env->context());
+  HandleScope handle_scope(env->isolate());
+  Local<Object> process_object = env->process_object();
+  Local<String> exit_code = FIXED_ONE_BYTE_STRING(env->isolate(), "exitCode");
+  Local<Value> args[] = {
+    FIXED_ONE_BYTE_STRING(env->isolate(), "beforeExit"),
+    process_object->Get(exit_code)->ToInteger()
+  };
+  MakeCallback(env, process_object, "emit", ARRAY_SIZE(args), args);
+}
+
+
+int EmitExit(Environment* env) {
+  // process.emit('exit')
+  HandleScope handle_scope(env->isolate());
+  Context::Scope context_scope(env->context());
+  Local<Object> process_object = env->process_object();
+  process_object->Set(env->exiting_string(), True(env->isolate()));
+
+  Handle<String> exitCode = env->exit_code_string();
+  int code = process_object->Get(exitCode)->IntegerValue();
+
+  Local<Value> args[] = {
+    env->exit_string(),
+    Integer::New(env->isolate(), code)
+  };
+
+  MakeCallback(env, process_object, "emit", ARRAY_SIZE(args), args);
+
+  // Reload exit code, it may be changed by `emit('exit')`
+  return process_object->Get(exitCode)->IntegerValue();
+}
+
 Environment* CreateEnvironment(Isolate* isolate,
                                Handle<Context> context,
                                int argc,
@@ -1999,6 +2066,30 @@ int Start(int argc, char** argv) {
     Local<Context> context = Context::New(node_isolate);
     Environment* env = CreateEnvironment(
         node_isolate, context, argc, argv, exec_argc, exec_argv);
+
+    // This Context::Scope is here so EnableDebug() can look up the current
+    // environment with Environment::GetCurrentChecked().
+    // TODO(bnoordhuis) Reorder the debugger initialization logic so it can
+    // be removed.
+    {
+      Context::Scope context_scope(env->context());
+      bool more;
+      do {
+        //more = uv_run(env->event_loop(), UV_RUN_ONCE);
+        more = false; // XXX
+        if (more == false) {
+          EmitBeforeExit(env);
+
+          // Emit `beforeExit` if the loop became alive either after emitting
+          // event, or after running some callbacks.
+          //more = uv_loop_alive(env->event_loop());
+          //if (uv_run(env->event_loop(), UV_RUN_NOWAIT) != 0)
+          //  more = true;
+        }
+      } while (more == true);
+      code = EmitExit(env);
+      RunAtExit(env);
+    }
 
     env->Dispose();
     env = NULL;
