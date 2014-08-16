@@ -1,3 +1,5 @@
+This Codius Node.js build is based on Node.js' 0.12 branch, commit 0d357fa135dedaae644d73b0b9a907b90c66f200.
+
 - No libuv
 - No process._needImmediateCallback
 - Can't spawn child processes

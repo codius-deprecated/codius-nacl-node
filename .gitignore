@@ -1,3 +1,6 @@
 node_modules/
 src/cpp/node_natives.h
 libs/ia32.debug/*.so
+
+# Natively compiled binary
+/node_nacl

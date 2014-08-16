@@ -33,10 +33,12 @@
 
 #include <assert.h>
 #include <errno.h>
+#include <limits.h>  // PATH_MAX
 #include <signal.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/time.h>
+#include <unistd.h>
 
 namespace node {
 
