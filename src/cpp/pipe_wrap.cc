@@ -91,7 +91,7 @@ void PipeWrap::Initialize(Handle<Object> target,
 //
 //  NODE_SET_PROTOTYPE_METHOD(t, "setBlocking", StreamWrap::SetBlocking);
 //
-//  NODE_SET_PROTOTYPE_METHOD(t, "readStart", StreamWrap::ReadStart);
+  NODE_SET_PROTOTYPE_METHOD(t, "readStart", ReadStart);
 //  NODE_SET_PROTOTYPE_METHOD(t, "readStop", StreamWrap::ReadStop);
 //  NODE_SET_PROTOTYPE_METHOD(t, "shutdown", StreamWrap::Shutdown);
 //
@@ -192,6 +192,19 @@ void PipeWrap::WriteUtf8String(const FunctionCallbackInfo<Value>& args) {
   // TODO-CODIUS: Do stuff...
 
   args.GetReturnValue().Set(0);  // uv_pipe_connect() doesn't return errors.
+}
+
+void PipeWrap::ReadStart(const FunctionCallbackInfo<Value>& args) {
+  Environment* env = Environment::GetCurrent(args.GetIsolate());
+  HandleScope scope(env->isolate());
+
+  PipeWrap* wrap = Unwrap<PipeWrap>(args.Holder());
+
+  // TODO-CODIUS: Implement PipeWrap::ReadStart
+//  int err = uv_read_start(wrap->stream(), OnAlloc, OnRead);
+  int err = 0;
+
+  args.GetReturnValue().Set(err);
 }
 
 

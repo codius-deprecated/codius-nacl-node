@@ -46,6 +46,7 @@ class PipeWrap : public BaseObject {
   static void Open(const v8::FunctionCallbackInfo<v8::Value>& args);
 
   static void WriteUtf8String(const v8::FunctionCallbackInfo<v8::Value>& args);
+  static void ReadStart(const v8::FunctionCallbackInfo<v8::Value>& args);
 
 
   int fd_;
