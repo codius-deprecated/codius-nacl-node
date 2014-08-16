@@ -15,3 +15,5 @@ This Codius Node.js build is based on Node.js' 0.12 branch, commit 0d357fa135ded
 - Timeout parameter doesn't do anything in vm.runInNewContext / vm.runInThisContext
 - No net.isIP
 - No TCP socket support
+- Non-functional: process.nextTick
+- No domains

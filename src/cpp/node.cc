@@ -671,6 +671,26 @@ Local<Value> ErrnoException(Isolate* isolate,
   return e;
 }
 
+void SetupNextTick(const FunctionCallbackInfo<Value>& args) {
+  HandleScope handle_scope(args.GetIsolate());
+  Environment* env = Environment::GetCurrent(args.GetIsolate());
+
+  assert(args[0]->IsObject());
+  assert(args[1]->IsFunction());
+
+  // Values use to cross communicate with processNextTick.
+  Local<Object> tick_info_obj = args[0].As<Object>();
+  tick_info_obj->SetIndexedPropertiesToExternalArrayData(
+      env->tick_info()->fields(),
+      kExternalUnsignedIntArray,
+      env->tick_info()->fields_count());
+
+  env->set_tick_callback_function(args[1].As<Function>());
+
+  // Do a little housekeeping.
+  env->process_object()->Delete(
+      FIXED_ONE_BYTE_STRING(args.GetIsolate(), "_setupNextTick"));
+}
 
 enum encoding ParseEncoding(Isolate* isolate,
                             Handle<Value> encoding_v,
@@ -1376,7 +1396,7 @@ void SetupProcessObject(Environment* env,
 
   // TODO-CODIUS: Disabled these...
   //NODE_SET_METHOD(process, "_setupAsyncListener", SetupAsyncListener);
-  //NODE_SET_METHOD(process, "_setupNextTick", SetupNextTick);
+  NODE_SET_METHOD(process, "_setupNextTick", SetupNextTick);
   //NODE_SET_METHOD(process, "_setupDomainUse", SetupDomainUse);
 
   // pre-set _events object for faster emit checks
