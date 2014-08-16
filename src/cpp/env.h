@@ -271,6 +271,28 @@ namespace node {
 
 class Environment {
  public:
+  class AsyncListener {
+   public:
+    inline uint32_t* fields();
+    inline int fields_count() const;
+    inline bool has_listener() const;
+    inline uint32_t watched_providers() const;
+
+   private:
+    friend class Environment;  // So we can call the constructor.
+    inline AsyncListener();
+
+    enum Fields {
+      kHasListener,
+      kWatchedProviders,
+      kFieldsCount
+    };
+
+    uint32_t fields_[kFieldsCount];
+
+    DISALLOW_COPY_AND_ASSIGN(AsyncListener);
+  };
+
   class DomainFlag {
    public:
     inline uint32_t* fields();
@@ -339,6 +361,7 @@ class Environment {
   inline bool in_domain() const;
   inline uint32_t watched_providers() const;
 
+  inline AsyncListener* async_listener();
   inline DomainFlag* domain_flag();
   inline TickInfo* tick_info();
 
@@ -394,6 +417,7 @@ class Environment {
 
   v8::Isolate* const isolate_;
   IsolateData* const isolate_data_;
+  AsyncListener async_listener_count_;
   DomainFlag domain_flag_;
   TickInfo tick_info_;
   bool using_smalloc_alloc_cb_;
