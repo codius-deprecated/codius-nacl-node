@@ -4,3 +4,9 @@ libs/ia32.debug/*.so
 
 # Natively compiled binary
 /node_nacl
+
+# NaCl binary
+/node_nacl.nexe
+
+# NetBeans IDE
+/nbproject
