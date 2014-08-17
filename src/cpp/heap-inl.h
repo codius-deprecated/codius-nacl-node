@@ -13,8 +13,8 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#ifndef UV_SRC_HEAP_H_
-#define UV_SRC_HEAP_H_
+#ifndef SRC_HEAP_INL_H_
+#define SRC_HEAP_INL_H_
 
 #include <stddef.h>  /* NULL */
 
@@ -242,4 +242,4 @@ HEAP_EXPORT(void heap_dequeue(struct heap* heap, heap_compare_fn less_than)) {
 
 #undef HEAP_EXPORT
 
-#endif  /* UV_SRC_HEAP_H_ */
+#endif  /* SRC_HEAP_INL_H_ */

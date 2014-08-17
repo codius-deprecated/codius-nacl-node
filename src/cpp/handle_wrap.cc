@@ -50,7 +50,7 @@ void HandleWrap::Ref(const FunctionCallbackInfo<Value>& args) {
   HandleWrap* wrap = Unwrap<HandleWrap>(args.Holder());
 
   if (wrap != NULL && wrap->handle__ != NULL) {
-    uv_ref(wrap->handle__);
+    wrap->handle__->Ref();
     wrap->flags_ &= ~kUnref;
   }
 }
@@ -63,7 +63,7 @@ void HandleWrap::Unref(const FunctionCallbackInfo<Value>& args) {
   HandleWrap* wrap = Unwrap<HandleWrap>(args.Holder());
 
   if (wrap != NULL && wrap->handle__ != NULL) {
-    uv_unref(wrap->handle__);
+    wrap->handle__->Unref();
     wrap->flags_ |= kUnref;
   }
 }
@@ -80,7 +80,7 @@ void HandleWrap::Close(const FunctionCallbackInfo<Value>& args) {
     return;
 
   assert(!wrap->persistent().IsEmpty());
-  uv_close(wrap->handle__, OnClose);
+  wrap->handle__->Close(OnClose);
   wrap->handle__ = NULL;
 
   if (args[0]->IsFunction()) {
@@ -92,7 +92,7 @@ void HandleWrap::Close(const FunctionCallbackInfo<Value>& args) {
 
 HandleWrap::HandleWrap(Environment* env,
                        Handle<Object> object,
-                       uv_handle_t* handle,
+                       EventLoop::Handle* handle,
                        AsyncWrap::ProviderType provider)
     : AsyncWrap(env, object, provider),
       flags_(0),
@@ -110,7 +110,7 @@ HandleWrap::~HandleWrap() {
 }
 
 
-void HandleWrap::OnClose(uv_handle_t* handle) {
+void HandleWrap::OnClose(EventLoop::Handle* handle) {
   HandleWrap* wrap = static_cast<HandleWrap*>(handle->data);
   Environment* env = wrap->env();
   HandleScope scope(env->isolate());

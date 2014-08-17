@@ -24,6 +24,7 @@
 
 #include "tree.h"
 #include "util.h"
+#include "event_loop.h"
 #include "v8.h"
 #include "queue.h"
 
@@ -358,8 +359,20 @@ class Environment {
   void AssignToContext(v8::Local<v8::Context> context);
 
   inline v8::Isolate* isolate() const;
+  inline EventLoop* event_loop() const;
+  inline bool has_async_listener() const;
   inline bool in_domain() const;
   inline uint32_t watched_providers() const;
+
+  static inline Environment* from_immediate_check_handle(EventLoop::CheckHandle* handle);
+  inline EventLoop::CheckHandle* immediate_check_handle();
+  inline EventLoop::IdleHandle* immediate_idle_handle();
+
+  static inline Environment* from_idle_prepare_handle(EventLoop::PrepareHandle* handle);
+  inline EventLoop::PrepareHandle* idle_prepare_handle();
+
+  static inline Environment* from_idle_check_handle(EventLoop::CheckHandle* handle);
+  inline EventLoop::CheckHandle* idle_check_handle();
 
   inline AsyncListener* async_listener();
   inline DomainFlag* domain_flag();
@@ -417,6 +430,10 @@ class Environment {
 
   v8::Isolate* const isolate_;
   IsolateData* const isolate_data_;
+  EventLoop::CheckHandle immediate_check_handle_;
+  EventLoop::IdleHandle immediate_idle_handle_;
+  EventLoop::PrepareHandle idle_prepare_handle_;
+  EventLoop::CheckHandle idle_check_handle_;
   AsyncListener async_listener_count_;
   DomainFlag domain_flag_;
   TickInfo tick_info_;
@@ -455,6 +472,7 @@ class Environment {
    public:
     static inline IsolateData* GetOrCreate(v8::Isolate* isolate);
     inline void Put();
+    inline EventLoop* event_loop() const;
 
     // Defined in src/node_profiler.cc.
     void StartGarbageCollectionTracking(Environment* env);
@@ -480,6 +498,7 @@ class Environment {
     void BeforeGarbageCollection(v8::GCType type, v8::GCCallbackFlags flags);
     void AfterGarbageCollection(v8::GCType type, v8::GCCallbackFlags flags);
 
+    EventLoop* const event_loop_;
     v8::Isolate* const isolate_;
 
 #define V(PropertyName, StringValue)                                          \

@@ -24,9 +24,9 @@
 
 #include "async-wrap.h"
 #include "env.h"
+#include "event_loop.h"
 #include "node.h"
 #include "queue.h"
-#include "uv.h"
 #include "v8.h"
 
 namespace node {
@@ -57,23 +57,23 @@ class HandleWrap : public AsyncWrap {
   static void Ref(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void Unref(const v8::FunctionCallbackInfo<v8::Value>& args);
 
-  inline uv_handle_t* GetHandle() { return handle__; }
+  inline EventLoop::Handle* GetHandle() { return handle__; }
 
  protected:
   HandleWrap(Environment* env,
              v8::Handle<v8::Object> object,
-             uv_handle_t* handle,
+             EventLoop::Handle* handle,
              AsyncWrap::ProviderType provider);
   virtual ~HandleWrap();
 
  private:
   friend void GetActiveHandles(const v8::FunctionCallbackInfo<v8::Value>&);
-  static void OnClose(uv_handle_t* handle);
+  static void OnClose(EventLoop::Handle* handle);
   QUEUE handle_wrap_queue_;
   unsigned int flags_;
   // Using double underscore due to handle_ member in tcp_wrap. Probably
   // tcp_wrap should rename it's member to 'handle'.
-  uv_handle_t* handle__;
+  EventLoop::Handle* handle__;
 
   static const unsigned int kUnref = 1;
   static const unsigned int kCloseCallback = 2;

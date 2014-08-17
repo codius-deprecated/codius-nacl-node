@@ -70,6 +70,8 @@ using v8::V8;
 using v8::Value;
 using v8::kExternalUnsignedIntArray;
 
+QUEUE handle_wrap_queue = { &handle_wrap_queue, &handle_wrap_queue };
+
 static node_module* modpending;
 static node_module* modlist_builtin;
 static node_module* modlist_addon;
@@ -121,6 +123,19 @@ void ArrayBufferAllocator::Free(void* data, size_t length) {
   delete[] static_cast<char*>(data);
 }
 
+
+static void CheckImmediate(EventLoop::CheckHandle* handle) {
+  Environment* env = Environment::from_immediate_check_handle(handle);
+  HandleScope scope(env->isolate());
+  Context::Scope context_scope(env->context());
+  MakeCallback(env, env->process_object(), env->immediate_callback_string());
+}
+
+
+static void IdleImmediateDummy(EventLoop::IdleHandle* handle) {
+  // Do nothing. Only for maintaining event loop.
+  // TODO(bnoordhuis) Maybe make libuv accept NULL idle callbacks.
+}
 
 
 static inline const char *errno_string(int errorno) {
@@ -1543,6 +1558,43 @@ static Handle<Object> GetFeatures(Environment* env) {
   return scope.Escape(obj);
 }
 
+
+void NeedImmediateCallbackGetter(Local<String> property,
+                                 const PropertyCallbackInfo<Value>& info) {
+  HandleScope handle_scope(info.GetIsolate());
+  Environment* env = Environment::GetCurrent(info.GetIsolate());
+  const EventLoop::CheckHandle* immediate_check_handle = env->immediate_check_handle();
+  bool active = immediate_check_handle->IsActive();
+  info.GetReturnValue().Set(active);
+}
+
+
+static void NeedImmediateCallbackSetter(
+    Local<String> property,
+    Local<Value> value,
+    const PropertyCallbackInfo<void>& info) {
+  HandleScope handle_scope(info.GetIsolate());
+  Environment* env = Environment::GetCurrent(info.GetIsolate());
+
+  EventLoop::CheckHandle* immediate_check_handle = env->immediate_check_handle();
+  bool active = immediate_check_handle->IsActive();
+
+  if (active == value->BooleanValue())
+    return;
+
+  EventLoop::IdleHandle* immediate_idle_handle = env->immediate_idle_handle();
+
+  if (active) {
+    immediate_check_handle->Stop();
+    immediate_idle_handle->Stop();
+  } else {
+    immediate_check_handle->Start(CheckImmediate);
+    // Idle handle is needed only to stop the event loop from blocking in poll.
+    immediate_idle_handle->Start(IdleImmediateDummy);
+  }
+}
+
+
 #define READONLY_PROPERTY(obj, str, var)                                      \
   do {                                                                        \
     obj->Set(OneByteString(env->isolate(), str), var, v8::ReadOnly);          \
@@ -1664,10 +1716,9 @@ void SetupProcessObject(Environment* env,
   READONLY_PROPERTY(process, "pid", Integer::New(env->isolate(), getpid()));
   READONLY_PROPERTY(process, "features", GetFeatures(env));
 
-  // TODO-CODIUS: Enable _needImmediateCallback
-  //process->SetAccessor(env->need_imm_cb_string(),
-  //    NeedImmediateCallbackGetter,
-  //    NeedImmediateCallbackSetter);
+  process->SetAccessor(env->need_imm_cb_string(),
+      NeedImmediateCallbackGetter,
+      NeedImmediateCallbackSetter);
 
   process->Set(env->exec_path_string(),
                FIXED_ONE_BYTE_STRING(env->isolate(), "/usr/bin/node-nacl"));
@@ -1724,9 +1775,9 @@ void SetupProcessObject(Environment* env,
 
   NODE_SET_METHOD(process, "binding", Binding);
 
-  // TODO-CODIUS: Disabled these...
   NODE_SET_METHOD(process, "_setupAsyncListener", SetupAsyncListener);
   NODE_SET_METHOD(process, "_setupNextTick", SetupNextTick);
+  // TODO-CODIUS: Enable domains
   //NODE_SET_METHOD(process, "_setupDomainUse", SetupDomainUse);
 
   // pre-set _events object for faster emit checks
@@ -2041,6 +2092,10 @@ Environment* CreateEnvironment(Isolate* isolate,
   Context::Scope context_scope(context);
   Environment* env = Environment::New(context);
 
+  env->immediate_check_handle()->Init(env->event_loop());
+  env->immediate_check_handle()->Unref();
+  env->immediate_idle_handle()->Init(env->event_loop());
+
   Local<FunctionTemplate> process_template = FunctionTemplate::New(isolate);
   process_template->SetClassName(FIXED_ONE_BYTE_STRING(isolate, "process"));
 
@@ -2075,14 +2130,13 @@ int Start(int argc, char** argv) {
       Context::Scope context_scope(env->context());
       bool more;
       do {
-        //more = uv_run(env->event_loop(), UV_RUN_ONCE);
-        more = false; // XXX
+        more = env->event_loop()->Run(EventLoop::modeRunOnce);
         if (more == false) {
           EmitBeforeExit(env);
 
           // Emit `beforeExit` if the loop became alive either after emitting
           // event, or after running some callbacks.
-          //more = uv_loop_alive(env->event_loop());
+          more = env->event_loop()->IsAlive();
           //if (uv_run(env->event_loop(), UV_RUN_NOWAIT) != 0)
           //  more = true;
         }

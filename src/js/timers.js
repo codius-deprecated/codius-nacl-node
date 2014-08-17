@@ -19,10 +19,6 @@
 // OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
 // USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-exports._unrefActive = function () {};
-
-return;
-
 var Timer = process.binding('timer_wrap').Timer;
 var L = require('_linklist');
 var assert = require('assert').ok;

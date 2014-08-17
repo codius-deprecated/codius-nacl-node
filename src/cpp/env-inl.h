@@ -91,13 +91,18 @@ inline void Environment::IsolateData::Put() {
 }
 
 inline Environment::IsolateData::IsolateData(v8::Isolate* isolate)
-    : isolate_(isolate),
+    : event_loop_(&EventLoop::GetLoop()),
+      isolate_(isolate),
 #define V(PropertyName, StringValue)                                          \
     PropertyName ## _(isolate, FIXED_ONE_BYTE_STRING(isolate, StringValue)),
     PER_ISOLATE_STRING_PROPERTIES(V)
 #undef V
     ref_count_(0) {
   QUEUE_INIT(&gc_tracker_queue_);
+}
+
+inline EventLoop* Environment::IsolateData::event_loop() const {
+  return event_loop_;
 }
 
 inline v8::Isolate* Environment::IsolateData::isolate() const {
@@ -251,10 +256,54 @@ inline v8::Isolate* Environment::isolate() const {
   return isolate_;
 }
 
+inline bool Environment::has_async_listener() const {
+  // The const_cast is okay, it doesn't violate conceptual const-ness.
+  return const_cast<Environment*>(this)->async_listener()->has_listener();
+}
+
+inline uint32_t Environment::watched_providers() const {
+  // The const_cast is okay, it doesn't violate conceptual const-ness.
+  return const_cast<Environment*>(this)->async_listener()->watched_providers();
+}
+
 inline bool Environment::in_domain() const {
   // The const_cast is okay, it doesn't violate conceptual const-ness.
   return using_domains() &&
          const_cast<Environment*>(this)->domain_flag()->count() > 0;
+}
+
+inline Environment* Environment::from_immediate_check_handle(
+    EventLoop::CheckHandle* handle) {
+  return ContainerOf(&Environment::immediate_check_handle_, handle);
+}
+
+inline EventLoop::CheckHandle* Environment::immediate_check_handle() {
+  return &immediate_check_handle_;
+}
+
+inline EventLoop::IdleHandle* Environment::immediate_idle_handle() {
+  return &immediate_idle_handle_;
+}
+
+inline Environment* Environment::from_idle_prepare_handle(
+    EventLoop::PrepareHandle* handle) {
+  return ContainerOf(&Environment::idle_prepare_handle_, handle);
+}
+
+inline EventLoop::PrepareHandle* Environment::idle_prepare_handle() {
+  return &idle_prepare_handle_;
+}
+
+inline Environment* Environment::from_idle_check_handle(EventLoop::CheckHandle* handle) {
+  return ContainerOf(&Environment::idle_check_handle_, handle);
+}
+
+inline EventLoop::CheckHandle* Environment::idle_check_handle() {
+  return &idle_check_handle_;
+}
+
+inline EventLoop* Environment::event_loop() const {
+  return isolate_data()->event_loop();
 }
 
 inline Environment::AsyncListener* Environment::async_listener() {

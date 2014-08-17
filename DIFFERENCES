@@ -1,7 +1,15 @@
 This Codius Node.js build is based on Node.js' 0.12 branch, commit 0d357fa135dedaae644d73b0b9a907b90c66f200.
 
+Implementation differences:
 - No libuv
-- No process._needImmediateCallback
+- The uv_loop_t in Environment is replaced with a new EventLoop class which
+  replaces a few libuv methods that we still need.
+- Instead of doing I/O direct via libuv, this implementation interacts via two
+  IPC channels on file descriptors 3 and 4.
+- Asynchronous calls are made via JSON messages on FD 3
+- Synchronous calls are made via JSON messages on FD 4
+
+API differences:
 - Can't spawn child processes
 - No --debug
 - No process._startProfilerIdleNotifier and process._stopProfilerIdleNotifier
@@ -9,11 +17,8 @@ This Codius Node.js build is based on Node.js' 0.12 branch, commit 0d357fa135ded
 - process.kill() is a noop
 - No process.hrtime()
 - No native extensions (process.dlopen() is disabled)
-- No process._setupAsyncListener
-- No process._setupNextTick
 - No process._setupDomainUse
 - Timeout parameter doesn't do anything in vm.runInNewContext / vm.runInThisContext
 - No net.isIP
 - No TCP socket support
-- Non-functional: process.nextTick
 - No domains

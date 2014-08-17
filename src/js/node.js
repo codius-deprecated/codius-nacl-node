@@ -46,7 +46,7 @@
     //startup.processFatal();
 
     startup.globalVariables();
-    //startup.globalTimeouts();
+    startup.globalTimeouts();
     startup.globalConsole();
 
     //startup.processAssert();

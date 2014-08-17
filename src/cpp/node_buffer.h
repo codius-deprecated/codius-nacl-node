@@ -26,9 +26,7 @@
 #include "smalloc.h"
 #include "v8.h"
 
-#if defined(NODE_WANT_INTERNALS)
 #include "env.h"
-#endif  // defined(NODE_WANT_INTERNALS)
 
 namespace node {
 namespace Buffer {
