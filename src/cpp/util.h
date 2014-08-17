@@ -61,7 +61,7 @@ namespace node {
 template <typename Inner, typename Outer>
 class ContainerOfHelper {
  public:
-  inline ContainerOfHelper(Inner Outer::*field, Inner* pointer);
+  inline ContainerOfHelper(Inner Outer::*field, const Inner* pointer);
   template <typename TypeName>
   inline operator TypeName*() const;
  private:
@@ -72,7 +72,7 @@ class ContainerOfHelper {
 // the interior pointer to a data member.
 template <typename Inner, typename Outer>
 inline ContainerOfHelper<Inner, Outer> ContainerOf(Inner Outer::*field,
-                                                   Inner* pointer);
+                                                   const Inner* pointer);
 
 // If persistent.IsWeak() == false, then do not call persistent.Reset()
 // while the returned Local<T> is still in scope, it will destroy the
