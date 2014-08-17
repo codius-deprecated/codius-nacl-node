@@ -23,8 +23,8 @@
 
 #include "env.h"
 #include "env-inl.h"
-#include "base-object.h"
-#include "base-object-inl.h"
+#include "handle_wrap.h"
+#include "async-wrap-inl.h"
 #include "node.h"
 #include "node_buffer.h"
 #include "util-inl.h"
@@ -52,7 +52,7 @@ using v8::Value;
 
 
 int PipeWrap::FileDescriptor() {
-  return fd_;
+  return handle_.GetFileDescriptor();
 }
 
 
@@ -128,10 +128,13 @@ void PipeWrap::New(const FunctionCallbackInfo<Value>& args) {
 
 
 PipeWrap::PipeWrap(Environment* env, Handle<Object> object, bool ipc)
-    : BaseObject(env,
-                 object) {
+    : HandleWrap(env,
+                 object,
+                 &handle_,
+                 AsyncWrap::PROVIDER_PIPEWRAP) {
   HandleScope scope(env->isolate());
   Wrap<PipeWrap>(object, this);
+  handle_.Init(env->event_loop(), ipc);
   /*int r = uv_pipe_init(env->event_loop(), &handle_, ipc);
   assert(r == 0);  // How do we proxy this error up to javascript?
                    // Suggestion: uv_pipe_init() returns void.
@@ -147,7 +150,9 @@ void PipeWrap::Open(const FunctionCallbackInfo<Value>& args) {
 
   PipeWrap* wrap = Unwrap<PipeWrap>(args.Holder());
 
-  wrap->fd_ = args[0]->Int32Value();
+  int fd = args[0]->Int32Value();
+
+  wrap->handle_.Open(fd);
 
   // TODO-CODIUS: Do stuff...
   /*
@@ -188,10 +193,77 @@ void PipeWrap::WriteUtf8String(const FunctionCallbackInfo<Value>& args) {
 
   node::Utf8Value name(args[1]);
 
-  write(wrap->fd_, *name, name.length());
+  write(wrap->handle_.GetFileDescriptor(), *name, name.length());
   // TODO-CODIUS: Do stuff...
 
   args.GetReturnValue().Set(0);  // uv_pipe_connect() doesn't return errors.
+}
+
+
+void PipeWrap::OnAlloc(EventLoop::Handle* handle,
+                       size_t suggested_size,
+                       EventLoop::Buffer* buf) {
+  PipeWrap* wrap = static_cast<PipeWrap*>(handle->data);
+  assert(&wrap->handle_ == reinterpret_cast<EventLoop::PipeHandle*>(handle));
+  buf->base = static_cast<char*>(malloc(suggested_size));
+  buf->len = suggested_size;
+
+  if (buf->base == NULL && suggested_size > 0) {
+    FatalError(
+        "node::PipeWrap::OnAlloc(EventLoop::Handle*, size_t, EventLoop::Buffer*)",
+        "Out Of Memory");
+  }
+}
+
+void PipeWrap::OnRead(EventLoop::PipeHandle* handle,
+                      ssize_t nread,
+                      const EventLoop::Buffer* buf) {
+  PipeWrap* wrap = static_cast<PipeWrap*>(handle->data);
+  Environment* env = wrap->env();
+  HandleScope handle_scope(env->isolate());
+  Context::Scope context_scope(env->context());
+
+  // We should not be getting this callback if someone as already called
+  // Close() on the handle.
+  assert(wrap->persistent().IsEmpty() == false);
+
+  Local<Value> argv[] = {
+    Integer::New(env->isolate(), nread),
+    Undefined(env->isolate()),
+    Undefined(env->isolate())
+  };
+
+  if (nread < 0)  {
+    if (buf->base != NULL)
+      free(buf->base);
+    wrap->MakeCallback(env->onread_string(), ARRAY_SIZE(argv), argv);
+    return;
+  }
+
+  if (nread == 0) {
+    if (buf->base != NULL)
+      free(buf->base);
+    return;
+  }
+
+  char* base = static_cast<char*>(realloc(buf->base, nread));
+  assert(static_cast<size_t>(nread) <= buf->len);
+  argv[1] = Buffer::Use(env, base, nread);
+
+  Local<Object> pending_obj;
+
+  // TODO-CODIUS: Do something like uv_accept where we can accept a handle,
+  // wrap it and then put it in pending_obj.
+//  if (wrap->is_named_pipe_ipc() &&
+//      uv_pipe_pending_count(reinterpret_cast<uv_pipe_t*>(handle)) > 0) {
+//    type = uv_pipe_pending_type(reinterpret_cast<uv_pipe_t*>(handle));
+//  }
+
+  if (!pending_obj.IsEmpty()) {
+    argv[2] = pending_obj;
+  }
+
+  wrap->MakeCallback(env->onread_string(), ARRAY_SIZE(argv), argv);
 }
 
 void PipeWrap::ReadStart(const FunctionCallbackInfo<Value>& args) {

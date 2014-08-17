@@ -23,11 +23,11 @@
 #define SRC_PIPE_WRAP_H_
 
 #include "env.h"
-#include "base-object.h"
+#include "handle_wrap.h"
 
 namespace node {
 
-class PipeWrap : public BaseObject {
+class PipeWrap : public HandleWrap {
  public:
   int FileDescriptor();
 
@@ -39,6 +39,18 @@ class PipeWrap : public BaseObject {
  private:
   PipeWrap(Environment* env, v8::Handle<v8::Object> object, bool ipc);
 
+  static void OnAlloc(EventLoop::Handle* handle,
+                      size_t suggested_size,
+                      EventLoop::Buffer* buf);
+
+  static void OnRead(EventLoop::PipeHandle* handle,
+                     ssize_t nread,
+                     const EventLoop::Buffer* buf);
+  static void OnReadCommon(EventLoop::PipeHandle* handle,
+                           ssize_t nread,
+                           const EventLoop::Buffer* buf,
+                           EventLoop::HandleType pending);
+
   static void New(const v8::FunctionCallbackInfo<v8::Value>& args);
   //static void Bind(const v8::FunctionCallbackInfo<v8::Value>& args);
   //static void Listen(const v8::FunctionCallbackInfo<v8::Value>& args);
@@ -49,7 +61,7 @@ class PipeWrap : public BaseObject {
   static void ReadStart(const v8::FunctionCallbackInfo<v8::Value>& args);
 
 
-  int fd_;
+  EventLoop::PipeHandle handle_;
 };
 
 

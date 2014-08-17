@@ -19,6 +19,11 @@ public:
     return instance;
   }
 
+  typedef struct {
+    char* base;
+    size_t len;
+  } Buffer;
+
   enum RunModes {
     modeRunOnce,
     modeRunNoWait
@@ -35,7 +40,8 @@ public:
     handleTypeIdle = handleLoopWatcherIdle,
     handleTypeCheck = handleLoopWatcherCheck,
     handleTypePrepare = handleLoopWatcherPrepare,
-    handleTypeTimer
+    handleTypeTimer,
+    handleTypePipe
   };
 
   class Handle {
@@ -186,6 +192,31 @@ public:
     uint64_t repeat_;
     uint64_t start_id_;
     struct heap_node heap_node_;
+
+    friend class EventLoop;
+  };
+
+  class PipeHandle : public Handle {
+  public:
+    typedef void (*Callback)(TimerHandle* handle);
+
+    inline void Init(EventLoop* loop, bool ipc) {
+      Handle::Init(loop, handleTypePipe);
+
+      fd_ = -1;
+    }
+
+    inline void Open(int fd) {
+      fd_ = fd;
+
+      // TODO-CODIUS: Determine readable/writable flags
+    }
+
+    inline int GetFileDescriptor() const {
+      return fd_;
+    }
+  private:
+    int fd_;
 
     friend class EventLoop;
   };
