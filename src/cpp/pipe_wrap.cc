@@ -272,9 +272,7 @@ void PipeWrap::ReadStart(const FunctionCallbackInfo<Value>& args) {
 
   PipeWrap* wrap = Unwrap<PipeWrap>(args.Holder());
 
-  // TODO-CODIUS: Implement PipeWrap::ReadStart
-//  int err = uv_read_start(wrap->stream(), OnAlloc, OnRead);
-  int err = 0;
+  int err = wrap->handle_.ReadStart(OnAlloc, OnRead);
 
   args.GetReturnValue().Set(err);
 }

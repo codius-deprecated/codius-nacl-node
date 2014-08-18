@@ -6,6 +6,8 @@
 #include "util-inl.h"
 #include "heap-inl.h"
 
+#include <climits>
+#include <poll.h>
 #include <sys/time.h>
 
 namespace node {
@@ -23,6 +25,10 @@ public:
     char* base;
     size_t len;
   } Buffer;
+
+  enum ErrorCodes {
+    errEOF                = -4095
+  };
 
   enum RunModes {
     modeRunOnce,
@@ -106,16 +112,26 @@ public:
       MakeClosePending();
     }
 
+    void FinishClose();
+
     void *data;
 
   private:
 
     enum {
-      fClosing        = 0x0001,
-      fClosed         = 0x0002,
-      fHandleRef      = 0x2000,
-      fHandleActive   = 0x4000,
-      fHandleInternal = 0x8000
+      fClosing           = 0x0001,
+      fClosed            = 0x0002,
+      fStreamReading     = 0x0004,
+      fStreamShutting    = 0x0008,
+      fStreamShut        = 0x0010,
+      fStreamReadable    = 0x0020,
+      fStreamWritable    = 0x0040,
+      fStreamBlocking    = 0x0080,
+      fStreamReadPartial = 0x0100,
+      fStreamReadEof     = 0x0200,
+      fHandleRef         = 0x2000,
+      fHandleActive      = 0x4000,
+      fHandleInternal    = 0x8000
     };
     EventLoop* loop_;
     HandleType type_;
@@ -126,6 +142,10 @@ public:
 
     friend class EventLoop;
   };
+
+  typedef void (*AllocCallback)(Handle* handle,
+                                size_t suggested_size,
+                                Buffer* buf);
 
   template <LoopWatcherHandleType type>
   class LoopWatcherHandle : public Handle {
@@ -196,30 +216,149 @@ public:
     friend class EventLoop;
   };
 
+  enum IoEventType {
+    ioEventIn  = POLLIN,
+    ioEventOut = POLLOUT,
+    ioEventErr = POLLERR,
+    ioEventHup = POLLHUP
+  };
+
+  class IoWatcher {
+  public:
+    typedef void (*IoCallback)(EventLoop* loop,
+                               IoWatcher* watcher,
+                               unsigned int events);
+    void Init(IoCallback cb, int fd);
+
+    void Start(EventLoop* loop, unsigned int events);
+    void Stop(EventLoop* loop, unsigned int events);
+
+    inline bool IsActive(unsigned events) {
+      assert(0 == (events & ~(ioEventIn | ioEventOut)));
+      assert(0 != events);
+      return 0 != (pevents_ & events);
+    }
+
+  private:
+    int fd_;
+    IoCallback cb_;
+    QUEUE watcher_queue_;
+    friend class EventLoop;
+    unsigned int pevents_;
+  };
+
   class PipeHandle : public Handle {
   public:
-    typedef void (*Callback)(TimerHandle* handle);
+    typedef void (*ReadCallback)(PipeHandle* handle,
+                                 ssize_t nread,
+                                 const Buffer* buf);
+
+    static void OnIo(EventLoop* loop,
+                     IoWatcher* watcher,
+                     unsigned int events);
 
     inline void Init(EventLoop* loop, bool ipc) {
       Handle::Init(loop, handleTypePipe);
 
-      fd_ = -1;
+      watcher_.Init(OnIo, -1);
     }
 
     inline void Open(int fd) {
-      fd_ = fd;
+      watcher_.fd_ = fd;
 
       // TODO-CODIUS: Determine readable/writable flags
     }
 
+    int ReadStart(AllocCallback alloc_cb,
+                  ReadCallback read_cb);
+    int ReadStop();
+
+    void Read();
+    void Eof(Buffer* buf);
+
     inline int GetFileDescriptor() const {
-      return fd_;
+      return watcher_.fd_;
+    }
+
+    inline void Destroy() {
+//      uv_write_t* req;
+//      QUEUE* q;
+//
+//      assert(!uv__io_active(&stream->io_watcher, UV__POLLIN | UV__POLLOUT));
+//      assert(stream->flags & UV_CLOSED);
+//
+//      if (stream->connect_req) {
+//        uv__req_unregister(stream->loop, stream->connect_req);
+//        stream->connect_req->cb(stream->connect_req, -ECANCELED);
+//        stream->connect_req = NULL;
+//      }
+//
+//      while (!QUEUE_EMPTY(&stream->write_queue)) {
+//        q = QUEUE_HEAD(&stream->write_queue);
+//        QUEUE_REMOVE(q);
+//
+//        req = QUEUE_DATA(q, uv_write_t, queue);
+//        req->error = -ECANCELED;
+//
+//        QUEUE_INSERT_TAIL(&stream->write_completed_queue, &req->queue);
+//      }
+//
+//      uv__write_callbacks(stream);
+//
+//      if (stream->shutdown_req) {
+//        /* The ECANCELED error code is a lie, the shutdown(2) syscall is a
+//         * fait accompli at this point. Maybe we should revisit this in v0.11.
+//         * A possible reason for leaving it unchanged is that it informs the
+//         * callee that the handle has been destroyed.
+//         */
+//        uv__req_unregister(stream->loop, stream->shutdown_req);
+//        stream->shutdown_req->cb(stream->shutdown_req, -ECANCELED);
+//        stream->shutdown_req = NULL;
+//      }
+//
+//      assert(stream->write_queue_size == 0);
     }
   private:
-    int fd_;
+    IoWatcher watcher_;
+
+    AllocCallback alloc_cb_;
+    ReadCallback read_cb_;
 
     friend class EventLoop;
   };
+
+  static unsigned int NextPowerOfTwo(unsigned int val) {
+    val -= 1;
+    val |= val >> 1;
+    val |= val >> 2;
+    val |= val >> 4;
+    val |= val >> 8;
+    val |= val >> 16;
+    val += 1;
+    return val;
+  }
+
+  inline void MaybeResize(unsigned int len) {
+    IoWatcher** watchers;
+    unsigned int nwatchers;
+    unsigned int i;
+
+    if (len <= nwatchers_)
+      return;
+
+    nwatchers = NextPowerOfTwo(len + 2) - 2;
+    watchers = static_cast<IoWatcher**>(
+      realloc(static_cast<void*>(watchers_),
+              (nwatchers + 2) * sizeof(watchers_[0])));
+
+    if (watchers == NULL)
+      abort();
+    for (i = nwatchers_; i < nwatchers; i++)
+      watchers[i] = NULL;
+
+    watchers_ = watchers;
+    nwatchers_ = nwatchers;
+  }
 
   inline bool HasActiveHandles() const {
     return active_handles_ > 0;
@@ -274,7 +413,60 @@ public:
     }
   }
 
+  inline void RunClosingHandles() {
+    Handle* p;
+    Handle* q;
+
+    p = closing_handles_;
+    closing_handles_ = NULL;
+
+    while (p) {
+      q = p->next_closing_;
+      p->FinishClose();
+      p = q;
+    }
+  }
+
+  void PollIo(int timeout);
+
+  int GetNextTimeout() {
+    const struct heap_node* heap_node;
+    const TimerHandle* handle;
+    uint64_t diff;
+
+    if (stop_flag_ != 0) {
+      return 0;
+    }
+
+    if (!IsAlive()) {
+      return 0;
+    }
+
+    if (!QUEUE_EMPTY(&loop_watcher_handles_[handleLoopWatcherIdle])) {
+      return 0;
+    }
+
+    if (closing_handles_) {
+      return 0;
+    }
+
+    heap_node = heap_min((const struct heap*) &timer_heap_);
+    if (heap_node == NULL)
+      return -1; /* block indefinitely */
+
+    handle = ContainerOf(&TimerHandle::heap_node_, heap_node);
+    if (handle->timeout_ <= time_)
+      return 0;
+
+    diff = handle->timeout_ - time_;
+    if (diff > INT_MAX)
+      diff = INT_MAX;
+
+    return diff;
+  }
+
   inline bool Run(RunModes mode) {
+    int timeout;
     bool r;
 
     r = IsAlive();
@@ -289,13 +481,14 @@ public:
       RunLoopWatcherHandles<handleLoopWatcherIdle>();
       RunLoopWatcherHandles<handleLoopWatcherPrepare>();
 
-//      timeout = 0;
-//      if ((mode & UV_RUN_NOWAIT) == 0)
-//        timeout = uv_backend_timeout(loop);
+      timeout = 0;
+      if ((mode & modeRunNoWait) == 0)
+        timeout = GetNextTimeout();
 
-//      uv__io_poll(loop, timeout);
+      PollIo(timeout);
       RunLoopWatcherHandles<handleLoopWatcherCheck>();
-//
+      RunClosingHandles();
+
       if (mode == modeRunOnce) {
         /* modeRunOnce implies forward progess: at least one callback must have
          * been invoked when it returns. uv__io_poll() can return without doing
@@ -336,6 +529,10 @@ private:
   struct heap timer_heap_;
   unsigned int stop_flag_;
   Handle* closing_handles_;
+  unsigned int nfds_;
+  QUEUE watcher_queue_;
+  unsigned int nwatchers_;
+  IoWatcher** watchers_;
 
   // Singleton. Don't allow copies.
   EventLoop(EventLoop const&);      // Do not implement
