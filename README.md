@@ -64,4 +64,4 @@ Build Node.js-lite executable with V8:
 ./build-host.sh
 ```
 
-This will create an executable called `node.native`.
+This will create an executable called `node_nacl`.
