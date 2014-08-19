@@ -177,8 +177,9 @@ void EventLoop::IoWatcher::Start(EventLoop* loop, unsigned int events) {
   pevents_ |= events;
   loop->MaybeResize(fd_ + 1);
 
-  if (QUEUE_EMPTY(&watcher_queue_))
+  if (QUEUE_EMPTY(&watcher_queue_)) {
     QUEUE_INSERT_TAIL(&loop->watcher_queue_, &watcher_queue_);
+  }
 
   if (loop->watchers_[fd_] == NULL) {
     loop->watchers_[fd_] = this;
@@ -371,10 +372,7 @@ void EventLoop::PipeHandle::Read() {
       abort();
       return;
     } else if (nread == 0) {
-      // TODO-CODIUS: Handle EOF
-      printf("TODO-CODIUS: Unhandled EOF!\n");
-      abort();
-//      uv__stream_eof(stream, &buf);
+      Eof(&buf);
       return;
     } else {
       /* Successful read */
@@ -403,11 +401,10 @@ void EventLoop::PipeHandle::Eof(Buffer* buf) {
   watcher_.Stop(loop_, ioEventIn);
   if (!watcher_.IsActive(ioEventOut))
     Handle::Stop();
-  read_cb_(this, EOF, buf);
+  read_cb_(this, errEOF, buf);
 }
 
 void EventLoop::PollIo(int timeout) {
-  QUEUE* q;
   IoWatcher* watcher;
   uint64_t base;
   uint64_t diff;
@@ -422,8 +419,19 @@ void EventLoop::PollIo(int timeout) {
     return;
   }
 
-  QUEUE_FOREACH(q, &watcher_queue_) {
+  // QUEUE_FOREACH is unsafe if the the callback removes the watcher from the
+  // queue. So instead we do this.
+  ASSERT(QUEUE_EMPTY(&watcher_queue_) == false);
+  QUEUE queue;
+  QUEUE* q = QUEUE_HEAD(&watcher_queue_);
+  QUEUE_SPLIT(&watcher_queue_, q, &queue);
+  while (QUEUE_EMPTY(&queue) == false) {
+    q = QUEUE_HEAD(&queue);
+    QUEUE_REMOVE(q);
+    QUEUE_INSERT_TAIL(&watcher_queue_, q);
+
     watcher = ContainerOf(&IoWatcher::watcher_queue_, q);
+
     assert(watcher->fd_ >= 0);
     assert(watcher->fd_ < (int) nwatchers_);
 
@@ -431,89 +439,6 @@ void EventLoop::PollIo(int timeout) {
       watcher->cb_(this, watcher, watcher->pevents_ & (ioEventIn | ioEventOut));
     }
   }
-
-  return;
-//
-//  assert(timeout >= -1);
-//  base = time_;
-//
-//  for (;;) {
-//    nfds = poll(pfds, i, timeout);
-//
-//    UpdateTime();
-//
-//    if (nfds == 0) {
-//      assert(timeout != -1);
-//      return;
-//    }
-//
-//    if (nfds == -1) {
-//      if (errno != EINTR)
-//        perror("poll()");
-//        abort();
-//
-//      if (timeout == -1)
-//        continue;
-//
-//      if (timeout == 0)
-//        return;
-//
-//      /* Interrupted by a signal. Update timeout and poll again. */
-//      goto update_timeout;
-//    }
-//
-//    nevents = 0;
-//
-//    if (nfds == -1) {
-//      // TODO-CODIUS: Handle error better
-//      perror("select()");
-//      assert(0);
-//    } else if (nfds) {
-//      for (i = 0; i < nfds; i++) {
-//        fd = pfds[i].fd;
-//
-//        if (fd == -1) {
-//          continue;
-//        }
-//
-//        assert(fd >= 0);
-//        assert((unsigned) fd < nwatchers_);
-//
-//        watcher = watchers_[fd];
-//
-//        pfds[i].revents &= watcher->pevents_ | ioEventErr | ioEventHup;
-//
-//        if (pfds[i].revents == ioEventErr || pfds[i].events == ioEventHup)
-//          pfds[i].revents |= watcher->pevents_ & (ioEventIn | ioEventOut);
-//
-//        if (pfds[i].revents != 0) {
-//          watcher->cb_(this, watcher, ioEventIn);
-//          nevents++;
-//        }
-//      }
-//
-//      if (nevents != 0) {
-//        return;
-//      }
-//
-//      if (timeout == 0)
-//        return;
-//
-//      if (timeout == -1)
-//        continue;
-//
-//update_timeout:
-//      assert(timeout > 0);
-//
-//      diff = time_ - base;
-//      if (diff >= static_cast<uint64_t>(timeout))
-//        return;
-//
-//      timeout -= diff;
-//    }
-//
-//    return;
-//  }
 }
 
 }  // namespace node

@@ -53,12 +53,14 @@
     //startup.processConfig();
     startup.processNextTick();
     startup.processStdio();
-    //startup.processKillAndExit();
+    startup.processKillAndExit();
     //startup.processSignalHandlers();
 
     //startup.processChannel();
 
     //startup.processRawDebug();
+
+    startup.processChdir();
 
     //startup.resolveArgv0();
 
@@ -615,6 +617,18 @@
     var rawDebug = process._rawDebug;
     process._rawDebug = function() {
       rawDebug(format.apply(null, arguments));
+    };
+  };
+
+
+  startup.processChdir = function() {
+    var _currentDirectory = '/';
+    process.cwd = function () {
+      return _currentDirectory;
+    };
+    process.chdir = function (relativePath) {
+      var path = NativeModule.require('path');
+      _currentDirectory = path.resolve(_currentDirectory, relativePath);
     };
   };
 

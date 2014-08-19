@@ -281,42 +281,10 @@ public:
     }
 
     inline void Destroy() {
-//      uv_write_t* req;
-//      QUEUE* q;
-//
-//      assert(!uv__io_active(&stream->io_watcher, UV__POLLIN | UV__POLLOUT));
-//      assert(stream->flags & UV_CLOSED);
-//
-//      if (stream->connect_req) {
-//        uv__req_unregister(stream->loop, stream->connect_req);
-//        stream->connect_req->cb(stream->connect_req, -ECANCELED);
-//        stream->connect_req = NULL;
-//      }
-//
-//      while (!QUEUE_EMPTY(&stream->write_queue)) {
-//        q = QUEUE_HEAD(&stream->write_queue);
-//        QUEUE_REMOVE(q);
-//
-//        req = QUEUE_DATA(q, uv_write_t, queue);
-//        req->error = -ECANCELED;
-//
-//        QUEUE_INSERT_TAIL(&stream->write_completed_queue, &req->queue);
-//      }
-//
-//      uv__write_callbacks(stream);
-//
-//      if (stream->shutdown_req) {
-//        /* The ECANCELED error code is a lie, the shutdown(2) syscall is a
-//         * fait accompli at this point. Maybe we should revisit this in v0.11.
-//         * A possible reason for leaving it unchanged is that it informs the
-//         * callee that the handle has been destroyed.
-//         */
-//        uv__req_unregister(stream->loop, stream->shutdown_req);
-//        stream->shutdown_req->cb(stream->shutdown_req, -ECANCELED);
-//        stream->shutdown_req = NULL;
-//      }
-//
-//      assert(stream->write_queue_size == 0);
+      QUEUE* q;
+
+      assert(!watcher_.IsActive(ioEventIn | ioEventOut));
+      assert(flags_ & fClosed);
     }
   private:
     IoWatcher watcher_;

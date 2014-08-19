@@ -85,16 +85,16 @@ void PipeWrap::Initialize(Handle<Object> target,
                                      v8::DEFAULT,
                                      attributes);*/
 
-//  NODE_SET_PROTOTYPE_METHOD(t, "close", HandleWrap::Close);
-//  NODE_SET_PROTOTYPE_METHOD(t, "unref", HandleWrap::Unref);
-//  NODE_SET_PROTOTYPE_METHOD(t, "ref", HandleWrap::Ref);
-//
+  NODE_SET_PROTOTYPE_METHOD(t, "close", HandleWrap::Close);
+  NODE_SET_PROTOTYPE_METHOD(t, "unref", HandleWrap::Unref);
+  NODE_SET_PROTOTYPE_METHOD(t, "ref", HandleWrap::Ref);
+
 //  NODE_SET_PROTOTYPE_METHOD(t, "setBlocking", StreamWrap::SetBlocking);
-//
+
   NODE_SET_PROTOTYPE_METHOD(t, "readStart", ReadStart);
 //  NODE_SET_PROTOTYPE_METHOD(t, "readStop", StreamWrap::ReadStop);
 //  NODE_SET_PROTOTYPE_METHOD(t, "shutdown", StreamWrap::Shutdown);
-//
+
 //  NODE_SET_PROTOTYPE_METHOD(t, "writeBuffer", StreamWrap::WriteBuffer);
 //  NODE_SET_PROTOTYPE_METHOD(t,
 //                            "writeAsciiString",
