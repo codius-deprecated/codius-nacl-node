@@ -407,7 +407,6 @@ void EventLoop::PipeHandle::Eof(Buffer* buf) {
 }
 
 void EventLoop::PollIo(int timeout) {
-  struct pollfd *pfds;
   QUEUE* q;
   IoWatcher* watcher;
   uint64_t base;
@@ -423,103 +422,98 @@ void EventLoop::PollIo(int timeout) {
     return;
   }
 
-  pfds = static_cast<struct pollfd*>(calloc(sizeof(pollfd), nwatchers_));
-
-  i = 0;
-  while (!QUEUE_EMPTY(&watcher_queue_)) {
-    q = QUEUE_HEAD(&watcher_queue_);
-    QUEUE_REMOVE(q);
-    QUEUE_INIT(q);
-
+  QUEUE_FOREACH(q, &watcher_queue_) {
     watcher = ContainerOf(&IoWatcher::watcher_queue_, q);
     assert(watcher->fd_ >= 0);
     assert(watcher->fd_ < (int) nwatchers_);
 
-    pfds[i].fd = watcher->fd_;
-    pfds[i].events = watcher->pevents_;
-
-    i++;
+    if (watcher->pevents_ & (ioEventIn | ioEventOut)) {
+      watcher->cb_(this, watcher, watcher->pevents_ & (ioEventIn | ioEventOut));
+    }
   }
 
-  assert(timeout >= -1);
-  base = time_;
-
-  for (;;) {
-    nfds = poll(pfds, i, timeout);
-
-    UpdateTime();
-
-    if (nfds == 0) {
-      assert(timeout != -1);
-      return;
-    }
-
-    if (nfds == -1) {
-      if (errno != EINTR)
-        abort();
-
-      if (timeout == -1)
-        continue;
-
-      if (timeout == 0)
-        return;
-
-      /* Interrupted by a signal. Update timeout and poll again. */
-      goto update_timeout;
-    }
-
-    nevents = 0;
-
-    if (nfds == -1) {
-      // TODO-CODIUS: Handle error better
-      perror("select()");
-      assert(0);
-    } else if (nfds) {
-      for (i = 0; i < nfds; i++) {
-        fd = pfds[i].fd;
-
-        if (fd == -1) {
-          continue;
-        }
-
-        assert(fd >= 0);
-        assert((unsigned) fd < nwatchers_);
-
-        watcher = watchers_[fd];
-
-        pfds[i].revents &= watcher->pevents_ | ioEventErr | ioEventHup;
-
-        if (pfds[i].revents == ioEventErr || pfds[i].events == ioEventHup)
-          pfds[i].revents |= watcher->pevents_ & (ioEventIn | ioEventOut);
-
-        if (pfds[i].revents != 0) {
-          watcher->cb_(this, watcher, ioEventIn);
-          nevents++;
-        }
-      }
-
-      if (nevents != 0) {
-        return;
-      }
-
-      if (timeout == 0)
-        return;
-
-      if (timeout == -1)
-        continue;
-
-update_timeout:
-      assert(timeout > 0);
-
-      diff = time_ - base;
-      if (diff >= static_cast<uint64_t>(timeout))
-        return;
-
-      timeout -= diff;
-    }
-
-    return;
-  }
+  return;
+//
+//  assert(timeout >= -1);
+//  base = time_;
+//
+//  for (;;) {
+//    nfds = poll(pfds, i, timeout);
+//
+//    UpdateTime();
+//
+//    if (nfds == 0) {
+//      assert(timeout != -1);
+//      return;
+//    }
+//
+//    if (nfds == -1) {
+//      if (errno != EINTR)
+//        perror("poll()");
+//        abort();
+//
+//      if (timeout == -1)
+//        continue;
+//
+//      if (timeout == 0)
+//        return;
+//
+//      /* Interrupted by a signal. Update timeout and poll again. */
+//      goto update_timeout;
+//    }
+//
+//    nevents = 0;
+//
+//    if (nfds == -1) {
+//      // TODO-CODIUS: Handle error better
+//      perror("select()");
+//      assert(0);
+//    } else if (nfds) {
+//      for (i = 0; i < nfds; i++) {
+//        fd = pfds[i].fd;
+//
+//        if (fd == -1) {
+//          continue;
+//        }
+//
+//        assert(fd >= 0);
+//        assert((unsigned) fd < nwatchers_);
+//
+//        watcher = watchers_[fd];
+//
+//        pfds[i].revents &= watcher->pevents_ | ioEventErr | ioEventHup;
+//
+//        if (pfds[i].revents == ioEventErr || pfds[i].events == ioEventHup)
+//          pfds[i].revents |= watcher->pevents_ & (ioEventIn | ioEventOut);
+//
+//        if (pfds[i].revents != 0) {
+//          watcher->cb_(this, watcher, ioEventIn);
+//          nevents++;
+//        }
+//      }
+//
+//      if (nevents != 0) {
+//        return;
+//      }
+//
+//      if (timeout == 0)
+//        return;
+//
+//      if (timeout == -1)
+//        continue;
+//
+//update_timeout:
+//      assert(timeout > 0);
+//
+//      diff = time_ - base;
+//      if (diff >= static_cast<uint64_t>(timeout))
+//        return;
+//
+//      timeout -= diff;
+//    }
+//
+//    return;
+//  }
 }
 
 }  // namespace node
