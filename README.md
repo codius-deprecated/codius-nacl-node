@@ -20,7 +20,7 @@ node test.js
 To run plain without outside JS:
 
 ```sh
-$NACL_SDK_ROOT/tools/sel_ldr_x86_32 -h 3:3 -a -- $NACL_SDK_ROOT/toolchain/linux_x86_glibc/x86_64-nacl/lib32/runnable-ld.so --library-path .:deps/v8/out/nacl_ia32.release/lib.target:$NACL_SDK_ROOT/ports/lib/glibc_x86_32/Release:$NACL_SDK_ROOT/toolchain/linux_x86_glibc/x86_64-nacl/lib32 ./v8_nacl_module.nexe
+$NACL_SDK_ROOT/tools/sel_ldr_x86_32 -h 3:3 -a -- $NACL_SDK_ROOT/toolchain/linux_x86_glibc/x86_64-nacl/lib32/runnable-ld.so --library-path .:deps/v8/out/nacl_ia32.release/lib.target:$NACL_SDK_ROOT/ports/lib/glibc_x86_32/Release:$NACL_SDK_ROOT/toolchain/linux_x86_glibc/x86_64-nacl/lib32 ./node_nacl.nexe
 ```
 
 ### To build NaCl-sandboxed Node.js-lite
