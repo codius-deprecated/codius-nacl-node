@@ -10,3 +10,5 @@ libs/ia32.debug/*.so
 
 # NetBeans IDE
 /nbproject
+
+*.pyc
