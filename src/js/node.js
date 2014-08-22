@@ -56,7 +56,8 @@
     startup.processKillAndExit();
     //startup.processSignalHandlers();
 
-    //startup.processChannel();
+    startup.processChannel();
+    startup.syncCommandChannel();
 
     //startup.processRawDebug();
 
@@ -590,25 +591,54 @@
 
 
   startup.processChannel = function() {
-    // If we were spawned with env NODE_CHANNEL_FD then load that up and
-    // start parsing data from that stream.
-    if (process.env.NODE_CHANNEL_FD) {
-      var fd = parseInt(process.env.NODE_CHANNEL_FD, 10);
-      assert(fd >= 0);
+    var fd = 3;
 
-      // Make sure it's not accidentally inherited by child processes.
-      delete process.env.NODE_CHANNEL_FD;
+    var net = NativeModule.require('net');
+    async_rpc = new net.Socket({
+      fd: fd,
+      readable: true,
+      writable: true
+    });
 
-      var cp = NativeModule.require('child_process');
+    // TODO: concatenate data chunks into messages
+    async_rpc.on('data', function(data){
+      process.emit('message', data);
+    });
+    
+    process.send = function(data) {
+      async_rpc.write(data);
+    };
+    
+    // // If we were spawned with env NODE_CHANNEL_FD then load that up and
+    // // start parsing data from that stream.
+    // if (process.env.NODE_CHANNEL_FD) {
+    //   var fd = parseInt(process.env.NODE_CHANNEL_FD, 10);
+    //   assert(fd >= 0);
 
-      // Load tcp_wrap to avoid situation where we might immediately receive
-      // a message.
-      // FIXME is this really necessary?
-      process.binding('tcp_wrap');
+    //   // Make sure it's not accidentally inherited by child processes.
+    //   delete process.env.NODE_CHANNEL_FD;
 
-      cp._forkChild(fd);
-      assert(process.send);
-    }
+    //   var cp = NativeModule.require('child_process');
+
+    //   // Load tcp_wrap to avoid situation where we might immediately receive
+    //   // a message.
+    //   // FIXME is this really necessary?
+    //   process.binding('tcp_wrap');
+
+    //   cp._forkChild(fd);
+    //   assert(process.send);
+    // }
+  };
+  
+  startup.syncCommandChannel = function() {
+    var fd = 4;
+    
+    var net = NativeModule.require('net');
+    async_rpc = new net.Socket({
+      fd: fd,
+      readable: true,
+      writable: true
+    });
   };
 
 

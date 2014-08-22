@@ -29,7 +29,7 @@ var util = require('util');
 var pathModule = require('path');
 
 // TODO-CODIUS: Create native fs binding for synchronous I/O
-//var binding = process.binding('fs');
+var binding = process.binding('fs');
 var constants = process.binding('constants');
 var fs = exports;
 var Stream = require('stream').Stream;
@@ -148,7 +148,7 @@ fs.Stats = function(
 
 // Create a C++ binding to the function which creates a Stats object.
 // TODO-CODIUS: Disabled
-//binding.FSInitialize(fs.Stats);
+binding.FSInitialize(fs.Stats);
 
 fs.Stats.prototype._checkModeProperty = function(property) {
   return ((this.mode & constants.S_IFMT) === property);
@@ -738,7 +738,18 @@ fs.lstatSync = function(path) {
 
 fs.statSync = function(path) {
   nullCheck(path);
-  return binding.stat(pathModule._makeLong(path));
+  
+  //return binding.stat(pathModule._makeLong(path));
+  var result = binding.stat(pathModule._makeLong(path)).result;
+  var result_values = Object.keys(result).map(function(key){ return result[key]; });
+  
+  // TODO-CODIUS: this works but the creation of the stats object should probably happen on the C++ side
+  var stats = new fs.Stats();
+  fs.Stats.apply(stats, result_values);
+
+  return stats;
+  
+  // return result;
 };
 
 fs.readlink = function(path, callback) {

@@ -36,6 +36,9 @@
 #include <string.h>
 #include <errno.h>
 #include <limits.h>
+#include <unistd.h>
+
+//#include <fcntl.h>
 
 #if defined(__MINGW32__) || defined(_MSC_VER)
 # include <io.h>
@@ -79,26 +82,6 @@ static inline bool IsInt64(double x) {
   return x == static_cast<double>(static_cast<int64_t>(x));
 }
 
-#define SYNC_DEST_CALL(func, path, dest, ...)                                 \
-  fs_req_wrap req_wrap;                                                       \
-  int err = uv_fs_ ## func(env->event_loop(),                                 \
-                         &req_wrap.req,                                       \
-                         __VA_ARGS__,                                         \
-                         NULL);                                               \
-  if (err < 0) {                                                              \
-    if (dest != NULL &&                                                       \
-        (err == UV_EEXIST ||                                                  \
-         err == UV_ENOTEMPTY ||                                               \
-         err == UV_EPERM)) {                                                  \
-      return env->ThrowUVException(err, #func, "", dest);                     \
-    } else {                                                                  \
-      return env->ThrowUVException(err, #func, "", path);                     \
-    }                                                                         \
-  }                                                                           \
-
-#define SYNC_CALL(func, path, ...)                                            \
-  SYNC_DEST_CALL(func, path, NULL, __VA_ARGS__)                               \
-
 #define SYNC_REQ req_wrap.req
 
 #define SYNC_RESULT err
@@ -140,6 +123,66 @@ typedef struct {
   uv_timespec_t st_ctim;
   uv_timespec_t st_birthtim;
 } uv_stat_t;
+
+static void uv__to_stat(struct stat* src, uv_stat_t* dst) {
+  dst->st_dev = src->st_dev;
+  dst->st_mode = src->st_mode;
+  dst->st_nlink = src->st_nlink;
+  dst->st_uid = src->st_uid;
+  dst->st_gid = src->st_gid;
+  dst->st_rdev = src->st_rdev;
+  dst->st_ino = src->st_ino;
+  dst->st_size = src->st_size;
+  dst->st_blksize = src->st_blksize;
+  dst->st_blocks = src->st_blocks;
+
+#if defined(__APPLE__)
+  dst->st_atim.tv_sec = src->st_atimespec.tv_sec;
+  dst->st_atim.tv_nsec = src->st_atimespec.tv_nsec;
+  dst->st_mtim.tv_sec = src->st_mtimespec.tv_sec;
+  dst->st_mtim.tv_nsec = src->st_mtimespec.tv_nsec;
+  dst->st_ctim.tv_sec = src->st_ctimespec.tv_sec;
+  dst->st_ctim.tv_nsec = src->st_ctimespec.tv_nsec;
+  dst->st_birthtim.tv_sec = src->st_birthtimespec.tv_sec;
+  dst->st_birthtim.tv_nsec = src->st_birthtimespec.tv_nsec;
+  dst->st_flags = src->st_flags;
+  dst->st_gen = src->st_gen;
+#elif !defined(_AIX) && \
+  (defined(_BSD_SOURCE) || defined(_SVID_SOURCE) || defined(_XOPEN_SOURCE))
+  dst->st_atim.tv_sec = src->st_atim.tv_sec;
+  dst->st_atim.tv_nsec = src->st_atim.tv_nsec;
+  dst->st_mtim.tv_sec = src->st_mtim.tv_sec;
+  dst->st_mtim.tv_nsec = src->st_mtim.tv_nsec;
+  dst->st_ctim.tv_sec = src->st_ctim.tv_sec;
+  dst->st_ctim.tv_nsec = src->st_ctim.tv_nsec;
+# if defined(__DragonFly__)  || \
+     defined(__FreeBSD__)    || \
+     defined(__OpenBSD__)    || \
+     defined(__NetBSD__)
+  dst->st_birthtim.tv_sec = src->st_birthtim.tv_sec;
+  dst->st_birthtim.tv_nsec = src->st_birthtim.tv_nsec;
+  dst->st_flags = src->st_flags;
+  dst->st_gen = src->st_gen;
+# else
+  dst->st_birthtim.tv_sec = src->st_ctim.tv_sec;
+  dst->st_birthtim.tv_nsec = src->st_ctim.tv_nsec;
+  dst->st_flags = 0;
+  dst->st_gen = 0;
+# endif
+#else
+  dst->st_atim.tv_sec = src->st_atime;
+  dst->st_atim.tv_nsec = 0;
+  dst->st_mtim.tv_sec = src->st_mtime;
+  dst->st_mtim.tv_nsec = 0;
+  dst->st_ctim.tv_sec = src->st_ctime;
+  dst->st_ctim.tv_nsec = 0;
+  dst->st_birthtim.tv_sec = src->st_ctime;
+  dst->st_birthtim.tv_nsec = 0;
+  dst->st_flags = 0;
+  dst->st_gen = 0;
+#endif
+}
+
 
 Local<Value> BuildStatsObject(Environment* env, const uv_stat_t* s) {
   // If you hit this assertion, you forgot to enter the v8::Context first.
@@ -237,23 +280,111 @@ Local<Value> BuildStatsObject(Environment* env, const uv_stat_t* s) {
 
   return handle_scope.Escape(stats);
 }
-//
-//static void Stat(const FunctionCallbackInfo<Value>& args) {
-//  Environment* env = Environment::GetCurrent(args.GetIsolate());
-//  HandleScope scope(env->isolate());
-//
-//  if (args.Length() < 1)
-//    return TYPE_ERROR("path required");
-//  if (!args[0]->IsString())
-//    return TYPE_ERROR("path must be a string");
-//
-//  node::Utf8Value path(args[0]);
-//
-//  SYNC_CALL(stat, *path, *path)
-//  args.GetReturnValue().Set(
-//      BuildStatsObject(env, static_cast<const uv_stat_t*>(SYNC_REQ.ptr)));
-//}
-//
+
+
+static void Stat(const FunctionCallbackInfo<Value>& args) {
+  Environment* env = Environment::GetCurrent(args.GetIsolate());
+  HandleScope scope(env->isolate());
+  //const char quote   = '\"';
+  const char newline = '\n';
+  size_t bytes_read;
+  int fd = 4;
+  
+  if (args.Length() < 1)
+    return TYPE_ERROR("path required");
+  if (!args[0]->IsString())
+    return TYPE_ERROR("path must be a string");
+
+  Local<Array> params = Array::New(env->isolate(), 1);
+  node::Utf8Value path(args[0]);
+  params->Set(0, args[0]->ToString());
+  
+  Local<Object> message = Object::New(env->isolate());
+  message->Set(String::NewFromUtf8(env->isolate(), "type"), 
+               String::NewFromUtf8(env->isolate(), "api"));
+  message->Set(String::NewFromUtf8(env->isolate(), "api"),
+               String::NewFromUtf8(env->isolate(), "fs"));
+  message->Set(String::NewFromUtf8(env->isolate(), "method"), 
+               String::NewFromUtf8(env->isolate(), "statSync"));
+  message->Set(String::NewFromUtf8(env->isolate(), "data"), 
+               params);
+               
+  // Stringify the JSON message.
+  Local<Object> global = env->context()->Global();
+  Handle<Object> JSON = global->Get(String::NewFromUtf8(env->isolate(), "JSON"))->ToObject();
+  Handle<Function> JSON_stringify = Handle<Function>::Cast(JSON->Get(String::NewFromUtf8(env->isolate(), "stringify")));
+  Local<Value> stringify_args[] = { message };
+
+  Local<Value> message_json = JSON_stringify->Call(JSON, 1, stringify_args);
+  
+  node::Utf8Value message_v(message_json);
+  
+  if (-1==write(fd, *message_v, strlen(*message_v)) ||
+      -1==write(fd, &newline, 1)) {
+    perror("write()");
+    return TYPE_ERROR("Error writing to fd 4");
+  }
+  
+  if (!message_v.length())
+    return TYPE_ERROR("error converting json to string");
+
+  
+  //fdopen returns errno Function Not Implemented
+  // FILE *pFile = fdopen(fd, "r");
+  // if (!pFile) {
+  //   perror("fdopen()");
+  //   return TYPE_ERROR("Error opening fd 4");
+  // }
+
+  //fcntl returns errno Function Not Implemented
+  // int flags = fcntl(fd, F_GETFL, 0);
+  // if (flags==-1)
+  //   perror ("fcntl()");
+  // printf ("flags: %d\n", flags);
+  
+  // flags |= O_NONBLOCK; 
+  // fcntl(fd, F_SETFL, flags); 
+  
+  char buf[1024];
+
+  // fgets(buf, sizeof(buf), pFile);
+  
+  //TODO-CODIUS read in a loop to handle big responses
+  bytes_read = read(fd, buf, sizeof(buf));
+  if (bytes_read==-1) {
+    perror ("read()");
+    return TYPE_ERROR("Error reading from fd 4");
+  }
+  
+  Local<String> response_str = String::NewFromUtf8(env->isolate(), buf, String::kNormalString, bytes_read);
+  
+  Handle<Function> JSON_parse = Handle<Function>::Cast(JSON->Get(String::NewFromUtf8(env->isolate(), "parse")));
+  Local<Value> parse_args[] = { response_str };
+
+  Local<Object> response = JSON_parse->Call(JSON, 1, parse_args)->ToObject();
+  
+  Handle<Value> resp_err = response->Get(String::NewFromUtf8(env->isolate(), "error"));
+  
+  //TODO-CODIUS Is resp_err identical to what is produced by ErrnoException() in node.cc?
+  if (!resp_err->IsNull()) {
+    //TYPE_ERROR()
+    //ThrowErrnoException
+    env->isolate()->ThrowException(resp_err);
+    return;
+  }
+  
+  //args.GetReturnValue().Set(response->Get(String::NewFromUtf8(env->isolate(), "result")));
+
+  args.GetReturnValue().Set(response);
+  
+  // args.GetReturnValue().Set(
+  //     BuildStatsObject(env, static_cast<const uv_stat_t*>(response/*SYNC_REQ.ptr - What goes here?*/)));
+
+  // SYNC_CALL(stat, *path, *path)
+  // args.GetReturnValue().Set(
+  //     BuildStatsObject(env, static_cast<const uv_stat_t*>(SYNC_REQ.ptr)));
+}
+
 //static void LStat(const FunctionCallbackInfo<Value>& args) {
 //  Environment* env = Environment::GetCurrent(args.GetIsolate());
 //  HandleScope scope(env->isolate());
@@ -864,7 +995,7 @@ void InitFs(Handle<Object> target,
 //  NODE_SET_METHOD(target, "rmdir", RMDir);
 //  NODE_SET_METHOD(target, "mkdir", MKDir);
 //  NODE_SET_METHOD(target, "readdir", ReadDir);
-//  NODE_SET_METHOD(target, "stat", Stat);
+  NODE_SET_METHOD(target, "stat", Stat);
 //  NODE_SET_METHOD(target, "lstat", LStat);
 //  NODE_SET_METHOD(target, "fstat", FStat);
 //  NODE_SET_METHOD(target, "link", Link);

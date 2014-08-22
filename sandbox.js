@@ -12,12 +12,14 @@ var RUN_CONTRACT_COMMAND = NACL_SDK_ROOT + '/tools/sel_ldr_x86_32';
 var RUN_CONTRACT_ARGS = [
   '-h', 
   '3:3', 
+  '-h',
+  '4:4',
   '-a', 
   '--', 
   NACL_SDK_ROOT + '/toolchain/linux_x86_glibc/x86_64-nacl/lib32/runnable-ld.so', 
   '--library-path', 
-  './:' + NACL_SDK_ROOT +'/toolchain/linux_x86_glibc/x86_64-nacl/lib32', 
-  './v8_nacl_module.nexe'
+  '.:deps/v8/out/nacl_ia32.release/lib.target:' + NACL_SDK_ROOT +'/ports/lib/glibc_x86_32/Release:' + NACL_SDK_ROOT + '/toolchain/linux_x86_glibc/x86_64-nacl/lib32:' + NACL_SDK_ROOT + '/lib/glibc_x86_32/Debug', 
+  './node_nacl.nexe'
 ];
 
 
@@ -26,52 +28,53 @@ var RUN_CONTRACT_ARGS = [
  */
 function Sandbox(opts) {
 	var self = this;
+	
+	if (!opts) {
+		opts = {};
+	}
 
-	self._filesystem_path = opts.sandbox_filesystem_path;
-	self._stdin = opts.stdin_stream || process.stdin;
-	self._stdout = opts.stdout_stream || process.stdout;
-	self._stderr = opts.stderr_stream || process.stderr;
+	self.stdio = null;
 	self._timeout = opts.timeout || 1000;
 
 	self._native_client_child = null;
-	self._ready = false;
-	self._message_queue = [];
+	// self._ready = false;
+	// self._message_queue = [];
 
 }
 util.inherits(Sandbox, EventEmitter);
 
 /**
- * Run the given code inside the sandbox
+ * Run the given file inside the sandbox
  *
  * @param {String} manifest_hash
- * @param {String} code
+ * @param {String} file_path
  */
-Sandbox.prototype.run = function(manifest_hash, code) {
+Sandbox.prototype.run = function(manifest_hash, file_path) {
 	var self = this;
 
 	// Create new sandbox
-	var wrapped_code = wrapCode(code);
-	self._native_client_child = spawnChildToRunCode(wrapped_code);
+	self._native_client_child = spawnChildToRunCode(file_path);
 	self._native_client_child.on('exit', function(code){
 		self.emit('exit', code);
 	});
+	self.stdio = self._native_client_child.stdio;
 
-	// Set up stdin, stdout, stderr, ipc
-	if (self._stdin) {
-		//self._stdin.pipe(self._native_client_child.stdio[0]);
-	}
-	//self._native_client_child.stdio[1].pipe(self._stdout);
-	//self._native_client_child.stdio[2].pipe(self._stderr);
-	self._native_client_child.on('message', self._handleMessage.bind(self));
-	self._native_client_child.stdio[4].pipe(concat(self._translateVirtualPath.bind(self, manifest_hash)));
+	// // Set up stdin, stdout, stderr, ipc
+	// if (self._stdin) {
+	// 	//self._stdin.pipe(self._native_client_child.stdio[0]);
+	// }
+	// //self._native_client_child.stdio[1].pipe(self._stdout);
+	// //self._native_client_child.stdio[2].pipe(self._stderr);
+	// self._native_client_child.on('message', self._handleMessage.bind(self));
+	// self._native_client_child.stdio[4].pipe(concat(self._translateVirtualPath.bind(self, manifest_hash)));
 };
 
-function wrapCode(code) {
-	var wrapped = '';
-	wrapped += code;
-	wrapped += ';postMessage(JSON.stringify({ type: "__ready" }));';
-	return wrapped;
-}
+// function wrapCode(code) {
+// 	var wrapped = '';
+// 	wrapped += code;
+// 	wrapped += ';postMessage(JSON.stringify({ type: "__ready" }));';
+// 	return wrapped;
+// }
 
 function spawnChildToRunCode(code) {
 	var args = RUN_CONTRACT_ARGS.slice();
@@ -79,10 +82,10 @@ function spawnChildToRunCode(code) {
 
 	var child = spawn(RUN_CONTRACT_COMMAND, args, { 
 	  stdio: [
-	    process.stdin,
-	    process.stdout,
-	    process.stderr,
-	    'ipc', 
+	    'pipe',
+	    'pipe',
+	    'pipe',
+	    'pipe', 
 	    'pipe'
 	    ] 
 	  });
@@ -104,53 +107,53 @@ Sandbox.prototype.kill = function(message){
 	self._native_client_child.kill(message);
 };
 
-Sandbox.prototype._handleMessage = function(message) {
-	var self = this;
+// Sandbox.prototype._handleMessage = function(message) {
+// 	var self = this;
 
-	if (typeof message !== 'object' || typeof message.type !== 'string') {
-    self._handleError(new Error('Bad IPC Message: ' + JSON.stringify(message)));
-  }
+// 	if (typeof message !== 'object' || typeof message.type !== 'string') {
+//     self._handleError(new Error('Bad IPC Message: ' + JSON.stringify(message)));
+//   }
 
-	if (message.type === '__ready') {
-    self._ready = true;
-    self.emit('ready');
-    // Process the _message_queue
-    while(self._message_queue.length > 0) {
-      self.postMessage(self._message_queue.shift());
-    }
-  } else {
-  	// TODO: serialize this to protect against any malicious messages
-  	self.emit('message', message);
-  }
-};
+// 	if (message.type === '__ready') {
+//     self._ready = true;
+//     self.emit('ready');
+//     // Process the _message_queue
+//     while(self._message_queue.length > 0) {
+//       self.postMessage(self._message_queue.shift());
+//     }
+//   } else {
+//   	// TODO: serialize this to protect against any malicious messages
+//   	self.emit('message', message);
+//   }
+// };
 
-Sandbox.prototype._handleError = function(error) {
-	var self = this;
-	self._stderr.write(error.stack);
-};
+// Sandbox.prototype._handleError = function(error) {
+// 	var self = this;
+// 	self._stderr.write(error.stack);
+// };
 
-Sandbox.prototype._translateVirtualPath = function(manifest_hash, virtual_path) {
-	var self = this;
-	console.log('Got request to translate virtual path: ' + virtual_path + ' to a real one for contract: ' + manifest_hash);
+// Sandbox.prototype._translateVirtualPath = function(manifest_hash, virtual_path) {
+// 	var self = this;
+// 	console.log('Got request to translate virtual path: ' + virtual_path + ' to a real one for contract: ' + manifest_hash);
 
-	// write response to self._native_client_child.stdio[4]
-};
+// 	// write response to self._native_client_child.stdio[4]
+// };
 
-/**
- * Send a message to the code running inside the sandbox.
- *
- * This message will be passed to the sandboxed
- * code's `onmessage` function, if defined.
- * Messages posted before the sandbox is ready will be queued
- */
-Sandbox.prototype.postMessage = function(message) {
-  var self = this;
+// /**
+// * Send a message to the code running inside the sandbox.
+// *
+// * This message will be passed to the sandboxed
+// * code's `onmessage` function, if defined.
+// * Messages posted before the sandbox is ready will be queued
+// */
+// Sandbox.prototype.postMessage = function(message) {
+//   var self = this;
 
-  if (self._ready) {
-    self._native_client_child.send(message);
-  } else {
-    self._message_queue.push(message);
-  }
-};
+//   if (self._ready) {
+//     self._native_client_child.send(message);
+//   } else {
+//     self._message_queue.push(message);
+//   }
+// };
 
 module.exports = Sandbox;
