@@ -38,7 +38,7 @@
 #include <limits.h>
 #include <unistd.h>
 
-//#include <fcntl.h>
+#include <fcntl.h>
 
 #if defined(__MINGW32__) || defined(_MSC_VER)
 # include <io.h>
@@ -82,194 +82,98 @@ static inline bool IsInt64(double x) {
   return x == static_cast<double>(static_cast<int64_t>(x));
 }
 
+//Local<Array> params = { __VA_ARGS__ };
+#define SYNC_DEST_CALL(func, path, dest, args)                                \
+  const char newline = '\n';                                                  \
+  size_t bytes_read;                                                          \
+  const int sync_fd = 4;                                                      \
+  Local<Object> message = Object::New(env->isolate());                        \
+  Handle<Array> params = Array::New(env->isolate(), args.Length());           \
+  for (int i=0; i<args.Length(); ++i) {                                       \
+    params->Set(i, args[i]);                                                  \
+  }                                                                           \
+  message->Set(String::NewFromUtf8(env->isolate(), "type"),                   \
+               String::NewFromUtf8(env->isolate(), "api"));                   \
+  message->Set(String::NewFromUtf8(env->isolate(), "api"),                    \
+               String::NewFromUtf8(env->isolate(), "fs"));                    \
+  message->Set(String::NewFromUtf8(env->isolate(), "method"),                 \
+               String::NewFromUtf8(env->isolate(), #func));                   \
+  message->Set(String::NewFromUtf8(env->isolate(), "data"),                   \
+               params);                                                       \
+  /* Stringify the JSON message. */                                           \
+  Local<Object> global = env->context()->Global();                            \
+  Handle<Object> JSON = global->Get(String::NewFromUtf8(                      \
+                                      env->isolate(), "JSON"))->ToObject();   \
+  Handle<Function> JSON_stringify = Handle<Function>::Cast(JSON->Get(         \
+                                      String::NewFromUtf8(env->isolate(),     \
+                                                          "stringify")));     \
+  Local<Value> stringify_args[] = { message };                                \
+  Local<Value> message_json = JSON_stringify->Call(JSON, 1, stringify_args);  \
+  node::Utf8Value message_v(message_json);                                    \
+  if (-1==write(sync_fd, *message_v, strlen(*message_v)) ||                   \
+      -1==write(sync_fd, &newline, 1)) {                                      \
+    perror("write()");                                                        \
+    return TYPE_ERROR("Error writing to sync_fd 4");                          \
+  }                                                                           \
+  if (!message_v.length())                                                    \
+    return TYPE_ERROR("error converting json to string");                     \
+  char resp_buf[1024];                                                        \
+  Local<String> response_str = String::NewFromUtf8(env->isolate(), "");       \
+  do {                                                                        \
+    bytes_read = read(sync_fd, resp_buf, sizeof(resp_buf));                   \
+    if (bytes_read==-1)                                                       \
+      return TYPE_ERROR("Error reading from sync_fd 4");                      \
+    response_str = String::Concat (response_str, String::NewFromUtf8(         \
+      env->isolate(), resp_buf, String::kNormalString, bytes_read));          \
+  } while (bytes_read==sizeof(resp_buf) && resp_buf[bytes_read-1]!='\n');     \
+  /* Parse the response */                                                    \
+  Handle<Function> JSON_parse = Handle<Function>::Cast(JSON->Get(             \
+                                  String::NewFromUtf8(env->isolate(),         \
+                                                      "parse")));             \
+  Local<Value> parse_args[] = { response_str };                               \
+  Local<Object> response = JSON_parse->Call(JSON, 1, parse_args)->ToObject(); \
+  Handle<Value> resp_err = response->Get(String::NewFromUtf8(env->isolate(),  \
+                                                             "error"));       \
+  //TODO-CODIUS Is resp_err identical to what is produced by ErrnoException() in node.cc?\
+  if (!resp_err->IsNull()) {                                                  \
+    env->isolate()->ThrowException(resp_err);                                 \
+    return;                                                                   \
+  }                                                                           \
+
+#define SYNC_CALL(func, path, args)                                           \
+  SYNC_DEST_CALL(func, path, NULL, args)                                      \
+
 #define SYNC_REQ req_wrap.req
 
-#define SYNC_RESULT err
+#define SYNC_RESULT !resp_err->IsNull() ? -1 : response->Get(String::NewFromUtf8(        \
+                                                  env->isolate(),             \
+                                                  "result"))->Int32Value()
+                                                  //"result"))->ToInt32()->Value()
 
 
-//static void Close(const FunctionCallbackInfo<Value>& args) {
-//  Environment* env = Environment::GetCurrent(args.GetIsolate());
-//  HandleScope scope(env->isolate());
-//
-//  if (args.Length() < 1 || !args[0]->IsInt32()) {
-//    return THROW_BAD_ARGS;
-//  }
-//
-//  int fd = args[0]->Int32Value();
-//
-//  SYNC_CALL(close, 0, fd)
-//}
+static void Close(const FunctionCallbackInfo<Value>& args) {
+  Environment* env = Environment::GetCurrent(args.GetIsolate());
+  HandleScope scope(env->isolate());
 
-typedef struct {
-  long tv_sec;
-  long tv_nsec;
-} uv_timespec_t;
+  if (args.Length() < 1 || !args[0]->IsInt32()) {
+    return THROW_BAD_ARGS;
+  }
 
-typedef struct {
-  uint64_t st_dev;
-  uint64_t st_mode;
-  uint64_t st_nlink;
-  uint64_t st_uid;
-  uint64_t st_gid;
-  uint64_t st_rdev;
-  uint64_t st_ino;
-  uint64_t st_size;
-  uint64_t st_blksize;
-  uint64_t st_blocks;
-  uint64_t st_flags;
-  uint64_t st_gen;
-  uv_timespec_t st_atim;
-  uv_timespec_t st_mtim;
-  uv_timespec_t st_ctim;
-  uv_timespec_t st_birthtim;
-} uv_stat_t;
+  // int fd = args[0]->Int32Value();
 
-static void uv__to_stat(struct stat* src, uv_stat_t* dst) {
-  dst->st_dev = src->st_dev;
-  dst->st_mode = src->st_mode;
-  dst->st_nlink = src->st_nlink;
-  dst->st_uid = src->st_uid;
-  dst->st_gid = src->st_gid;
-  dst->st_rdev = src->st_rdev;
-  dst->st_ino = src->st_ino;
-  dst->st_size = src->st_size;
-  dst->st_blksize = src->st_blksize;
-  dst->st_blocks = src->st_blocks;
-
-#if defined(__APPLE__)
-  dst->st_atim.tv_sec = src->st_atimespec.tv_sec;
-  dst->st_atim.tv_nsec = src->st_atimespec.tv_nsec;
-  dst->st_mtim.tv_sec = src->st_mtimespec.tv_sec;
-  dst->st_mtim.tv_nsec = src->st_mtimespec.tv_nsec;
-  dst->st_ctim.tv_sec = src->st_ctimespec.tv_sec;
-  dst->st_ctim.tv_nsec = src->st_ctimespec.tv_nsec;
-  dst->st_birthtim.tv_sec = src->st_birthtimespec.tv_sec;
-  dst->st_birthtim.tv_nsec = src->st_birthtimespec.tv_nsec;
-  dst->st_flags = src->st_flags;
-  dst->st_gen = src->st_gen;
-#elif !defined(_AIX) && \
-  (defined(_BSD_SOURCE) || defined(_SVID_SOURCE) || defined(_XOPEN_SOURCE))
-  dst->st_atim.tv_sec = src->st_atim.tv_sec;
-  dst->st_atim.tv_nsec = src->st_atim.tv_nsec;
-  dst->st_mtim.tv_sec = src->st_mtim.tv_sec;
-  dst->st_mtim.tv_nsec = src->st_mtim.tv_nsec;
-  dst->st_ctim.tv_sec = src->st_ctim.tv_sec;
-  dst->st_ctim.tv_nsec = src->st_ctim.tv_nsec;
-# if defined(__DragonFly__)  || \
-     defined(__FreeBSD__)    || \
-     defined(__OpenBSD__)    || \
-     defined(__NetBSD__)
-  dst->st_birthtim.tv_sec = src->st_birthtim.tv_sec;
-  dst->st_birthtim.tv_nsec = src->st_birthtim.tv_nsec;
-  dst->st_flags = src->st_flags;
-  dst->st_gen = src->st_gen;
-# else
-  dst->st_birthtim.tv_sec = src->st_ctim.tv_sec;
-  dst->st_birthtim.tv_nsec = src->st_ctim.tv_nsec;
-  dst->st_flags = 0;
-  dst->st_gen = 0;
-# endif
-#else
-  dst->st_atim.tv_sec = src->st_atime;
-  dst->st_atim.tv_nsec = 0;
-  dst->st_mtim.tv_sec = src->st_mtime;
-  dst->st_mtim.tv_nsec = 0;
-  dst->st_ctim.tv_sec = src->st_ctime;
-  dst->st_ctim.tv_nsec = 0;
-  dst->st_birthtim.tv_sec = src->st_ctime;
-  dst->st_birthtim.tv_nsec = 0;
-  dst->st_flags = 0;
-  dst->st_gen = 0;
-#endif
+  // SYNC_CALL(close, 0, fd)
+  SYNC_CALL(close, 0, args);
 }
 
 
-Local<Value> BuildStatsObject(Environment* env, const uv_stat_t* s) {
+Local<Value> BuildStatsObject(Environment* env, const Handle<Object> src) {
   // If you hit this assertion, you forgot to enter the v8::Context first.
   assert(env->context() == env->isolate()->GetCurrentContext());
 
   EscapableHandleScope handle_scope(env->isolate());
-
-  // The code below is very nasty-looking but it prevents a segmentation fault
-  // when people run JS code like the snippet below. It's apparently more
-  // common than you would expect, several people have reported this crash...
-  //
-  //   function crash() {
-  //     fs.statSync('.');
-  //     crash();
-  //   }
-  //
-  // We need to check the return value of Integer::New() and Date::New()
-  // and make sure that we bail out when V8 returns an empty handle.
-
-  // Integers.
-#define X(name)                                                               \
-  Local<Value> name = Integer::New(env->isolate(), s->st_##name);             \
-  if (name.IsEmpty())                                                         \
-    return handle_scope.Escape(Local<Object>());                              \
-
-  X(dev)
-  X(mode)
-  X(nlink)
-  X(uid)
-  X(gid)
-  X(rdev)
-# if defined(__POSIX__)
-  X(blksize)
-# else
-  Local<Value> blksize = Undefined(env->isolate());
-# endif
-#undef X
-
-  // Numbers.
-#define X(name)                                                               \
-  Local<Value> name = Number::New(env->isolate(),                             \
-                                  static_cast<double>(s->st_##name));         \
-  if (name.IsEmpty())                                                         \
-    return handle_scope.Escape(Local<Object>());                              \
-
-  X(ino)
-  X(size)
-# if defined(__POSIX__)
-  X(blocks)
-# else
-  Local<Value> blocks = Undefined(env->isolate());
-# endif
-#undef X
-
-  // Dates.
-#define X(name)                                                               \
-  Local<Value> name##_msec =                                                  \
-    Number::New(env->isolate(),                                               \
-        (static_cast<double>(s->st_##name.tv_sec) * 1000) +                   \
-        (static_cast<double>(s->st_##name.tv_nsec / 1000000)));               \
-                                                                              \
-  if (name##_msec.IsEmpty())                                                  \
-    return handle_scope.Escape(Local<Object>());                              \
-
-  X(atim)
-  X(mtim)
-  X(ctim)
-  X(birthtim)
-#undef X
-
+  
   // Pass stats as the first argument, this is the object we are modifying.
-  Local<Value> argv[] = {
-    dev,
-    mode,
-    nlink,
-    uid,
-    gid,
-    rdev,
-    blksize,
-    ino,
-    size,
-    blocks,
-    atim_msec,
-    mtim_msec,
-    ctim_msec,
-    birthtim_msec
-  };
+  Local<Value> argv[] = { src };
 
   // Call out to JavaScript to create the stats object.
   Local<Value> stats =
@@ -285,137 +189,61 @@ Local<Value> BuildStatsObject(Environment* env, const uv_stat_t* s) {
 static void Stat(const FunctionCallbackInfo<Value>& args) {
   Environment* env = Environment::GetCurrent(args.GetIsolate());
   HandleScope scope(env->isolate());
-  //const char quote   = '\"';
-  const char newline = '\n';
-  size_t bytes_read;
-  int fd = 4;
   
   if (args.Length() < 1)
     return TYPE_ERROR("path required");
   if (!args[0]->IsString())
     return TYPE_ERROR("path must be a string");
-
-  Local<Array> params = Array::New(env->isolate(), 1);
+  
   node::Utf8Value path(args[0]);
-  params->Set(0, args[0]->ToString());
   
-  Local<Object> message = Object::New(env->isolate());
-  message->Set(String::NewFromUtf8(env->isolate(), "type"), 
-               String::NewFromUtf8(env->isolate(), "api"));
-  message->Set(String::NewFromUtf8(env->isolate(), "api"),
-               String::NewFromUtf8(env->isolate(), "fs"));
-  message->Set(String::NewFromUtf8(env->isolate(), "method"), 
-               String::NewFromUtf8(env->isolate(), "statSync"));
-  message->Set(String::NewFromUtf8(env->isolate(), "data"), 
-               params);
-               
-  // Stringify the JSON message.
-  Local<Object> global = env->context()->Global();
-  Handle<Object> JSON = global->Get(String::NewFromUtf8(env->isolate(), "JSON"))->ToObject();
-  Handle<Function> JSON_stringify = Handle<Function>::Cast(JSON->Get(String::NewFromUtf8(env->isolate(), "stringify")));
-  Local<Value> stringify_args[] = { message };
-
-  Local<Value> message_json = JSON_stringify->Call(JSON, 1, stringify_args);
-  
-  node::Utf8Value message_v(message_json);
-  
-  if (-1==write(fd, *message_v, strlen(*message_v)) ||
-      -1==write(fd, &newline, 1)) {
-    perror("write()");
-    return TYPE_ERROR("Error writing to fd 4");
+  if (args[1]->IsFunction()) {
+    //ASYNC_CALL(stat, args[1], *path)
+    return TYPE_ERROR("TODO-CODIUS: Not implemented!");
+  } else {
+    SYNC_CALL(stat, *path, args)
+    //What if response.result is empty?
+    args.GetReturnValue().Set(
+        BuildStatsObject(env, 
+          response->Get(String::NewFromUtf8(env->isolate(), "result"))->ToObject()));
   }
-  
-  if (!message_v.length())
-    return TYPE_ERROR("error converting json to string");
-
-  
-  //fdopen returns errno Function Not Implemented
-  // FILE *pFile = fdopen(fd, "r");
-  // if (!pFile) {
-  //   perror("fdopen()");
-  //   return TYPE_ERROR("Error opening fd 4");
-  // }
-
-  //fcntl returns errno Function Not Implemented
-  // int flags = fcntl(fd, F_GETFL, 0);
-  // if (flags==-1)
-  //   perror ("fcntl()");
-  // printf ("flags: %d\n", flags);
-  
-  // flags |= O_NONBLOCK; 
-  // fcntl(fd, F_SETFL, flags); 
-  
-  char buf[1024];
-
-  // fgets(buf, sizeof(buf), pFile);
-  
-  //TODO-CODIUS read in a loop to handle big responses
-  bytes_read = read(fd, buf, sizeof(buf));
-  if (bytes_read==-1) {
-    perror ("read()");
-    return TYPE_ERROR("Error reading from fd 4");
-  }
-  
-  Local<String> response_str = String::NewFromUtf8(env->isolate(), buf, String::kNormalString, bytes_read);
-  
-  Handle<Function> JSON_parse = Handle<Function>::Cast(JSON->Get(String::NewFromUtf8(env->isolate(), "parse")));
-  Local<Value> parse_args[] = { response_str };
-
-  Local<Object> response = JSON_parse->Call(JSON, 1, parse_args)->ToObject();
-  
-  Handle<Value> resp_err = response->Get(String::NewFromUtf8(env->isolate(), "error"));
-  
-  //TODO-CODIUS Is resp_err identical to what is produced by ErrnoException() in node.cc?
-  if (!resp_err->IsNull()) {
-    //TYPE_ERROR()
-    //ThrowErrnoException
-    env->isolate()->ThrowException(resp_err);
-    return;
-  }
-  
-  //args.GetReturnValue().Set(response->Get(String::NewFromUtf8(env->isolate(), "result")));
-
-  args.GetReturnValue().Set(response);
-  
-  // args.GetReturnValue().Set(
-  //     BuildStatsObject(env, static_cast<const uv_stat_t*>(response/*SYNC_REQ.ptr - What goes here?*/)));
-
-  // SYNC_CALL(stat, *path, *path)
-  // args.GetReturnValue().Set(
-  //     BuildStatsObject(env, static_cast<const uv_stat_t*>(SYNC_REQ.ptr)));
 }
 
-//static void LStat(const FunctionCallbackInfo<Value>& args) {
-//  Environment* env = Environment::GetCurrent(args.GetIsolate());
-//  HandleScope scope(env->isolate());
-//
-//  if (args.Length() < 1)
-//    return TYPE_ERROR("path required");
-//  if (!args[0]->IsString())
-//    return TYPE_ERROR("path must be a string");
-//
-//  node::Utf8Value path(args[0]);
-//
-//  SYNC_CALL(lstat, *path, *path)
-//  args.GetReturnValue().Set(
-//    BuildStatsObject(env, static_cast<const uv_stat_t*>(SYNC_REQ.ptr)));
-//}
-//
-//static void FStat(const FunctionCallbackInfo<Value>& args) {
-//  Environment* env = Environment::GetCurrent(args.GetIsolate());
-//  HandleScope scope(env->isolate());
-//
-//  if (args.Length() < 1 || !args[0]->IsInt32()) {
-//    return THROW_BAD_ARGS;
-//  }
-//
-//  int fd = args[0]->Int32Value();
-//
-//  SYNC_CALL(fstat, 0, fd)
-//  args.GetReturnValue().Set(
-//      BuildStatsObject(env, static_cast<const uv_stat_t*>(SYNC_REQ.ptr)));
-//}
-//
+static void LStat(const FunctionCallbackInfo<Value>& args) {
+  Environment* env = Environment::GetCurrent(args.GetIsolate());
+  HandleScope scope(env->isolate());
+
+  if (args.Length() < 1)
+    return TYPE_ERROR("path required");
+  if (!args[0]->IsString())
+    return TYPE_ERROR("path must be a string");
+
+  node::Utf8Value path(args[0]);
+
+  //SYNC_CALL(lstat, *path, *path)
+  SYNC_CALL(lstat, *path, args)
+  args.GetReturnValue().Set(
+    BuildStatsObject(env, 
+      response->Get(String::NewFromUtf8(env->isolate(), "result"))->ToObject()));
+}
+
+static void FStat(const FunctionCallbackInfo<Value>& args) {
+  Environment* env = Environment::GetCurrent(args.GetIsolate());
+  HandleScope scope(env->isolate());
+
+  if (args.Length() < 1 || !args[0]->IsInt32()) {
+    return THROW_BAD_ARGS;
+  }
+
+  // int fd = args[0]->Int32Value();
+
+  // SYNC_CALL(fstat, 0, fd)
+  SYNC_CALL(fstat, 0, args)
+  args.GetReturnValue().Set(
+    BuildStatsObject(env, 
+      response->Get(String::NewFromUtf8(env->isolate(), "result"))->ToObject()));
+}
+
 //static void Symlink(const FunctionCallbackInfo<Value>& args) {
 //  Environment* env = Environment::GetCurrent(args.GetIsolate());
 //  HandleScope scope(env->isolate());
@@ -620,34 +448,35 @@ static void Stat(const FunctionCallbackInfo<Value>& args) {
 //
 //  args.GetReturnValue().Set(names);
 //}
-//
-//static void Open(const FunctionCallbackInfo<Value>& args) {
-//  Environment* env = Environment::GetCurrent(args.GetIsolate());
-//  HandleScope scope(env->isolate());
-//
-//  int len = args.Length();
-//  if (len < 1)
-//    return TYPE_ERROR("path required");
-//  if (len < 2)
-//    return TYPE_ERROR("flags required");
-//  if (len < 3)
-//    return TYPE_ERROR("mode required");
-//  if (!args[0]->IsString())
-//    return TYPE_ERROR("path must be a string");
-//  if (!args[1]->IsInt32())
-//    return TYPE_ERROR("flags must be an int");
-//  if (!args[2]->IsInt32())
-//    return TYPE_ERROR("mode must be an int");
-//
-//  node::Utf8Value path(args[0]);
-//  int flags = args[1]->Int32Value();
-//  int mode = static_cast<int>(args[2]->Int32Value());
-//
-//  SYNC_CALL(open, *path, *path, flags, mode)
-//  args.GetReturnValue().Set(SYNC_RESULT);
-//}
-//
-//
+
+static void Open(const FunctionCallbackInfo<Value>& args) {
+  Environment* env = Environment::GetCurrent(args.GetIsolate());
+  HandleScope scope(env->isolate());
+  
+  int len = args.Length();
+  if (len < 1)
+    return TYPE_ERROR("path required");
+  if (len < 2)
+    return TYPE_ERROR("flags required");
+  if (len < 3)
+    return TYPE_ERROR("mode required");
+  if (!args[0]->IsString())
+    return TYPE_ERROR("path must be a string");
+  if (!args[1]->IsInt32())
+    return TYPE_ERROR("flags must be an int");
+  if (!args[2]->IsInt32())
+    return TYPE_ERROR("mode must be an int");
+
+  node::Utf8Value path(args[0]);
+  // int flags = args[1]->Int32Value();
+  // int mode = static_cast<int>(args[2]->Int32Value());
+
+  // SYNC_CALL(open, *path, *path, flags, mode)
+  SYNC_CALL(open, *path, args)
+  args.GetReturnValue().Set(SYNC_RESULT);
+}
+
+
 //// Wrapper for write(2).
 ////
 //// bytesWritten = write(fd, buffer, offset, length, position, callback)
@@ -777,53 +606,54 @@ static void Stat(const FunctionCallbackInfo<Value>& args) {
  * 4 position  file position - null for current position
  *
  */
-//static void Read(const FunctionCallbackInfo<Value>& args) {
-//  Environment* env = Environment::GetCurrent(args.GetIsolate());
-//  HandleScope scope(env->isolate());
-//
-//  if (args.Length() < 2 || !args[0]->IsInt32()) {
-//    return THROW_BAD_ARGS;
-//  }
-//
-//  int fd = args[0]->Int32Value();
-//
-//  Local<Value> cb;
-//
-//  size_t len;
-//  int64_t pos;
-//
-//  char * buf = NULL;
-//
-//  if (!Buffer::HasInstance(args[1])) {
-//    return env->ThrowError("Second argument needs to be a buffer");
-//  }
-//
-//  Local<Object> buffer_obj = args[1]->ToObject();
-//  char *buffer_data = Buffer::Data(buffer_obj);
-//  size_t buffer_length = Buffer::Length(buffer_obj);
-//
-//  size_t off = args[2]->Int32Value();
-//  if (off >= buffer_length) {
-//    return env->ThrowError("Offset is out of bounds");
-//  }
-//
-//  len = args[3]->Int32Value();
-//  if (!Buffer::IsWithinBounds(off, len, buffer_length))
-//    return env->ThrowRangeError("Length extends beyond buffer");
-//
-//  pos = GET_OFFSET(args[4]);
-//
-//  buf = buffer_data + off;
-//
-//  uv_buf_t uvbuf = uv_buf_init(const_cast<char*>(buf), len);
-//
-//  cb = args[5];
-//
-//  SYNC_CALL(read, 0, fd, &uvbuf, 1, pos)
-//  args.GetReturnValue().Set(SYNC_RESULT);
-//}
-//
-//
+static void Read(const FunctionCallbackInfo<Value>& args) {
+  Environment* env = Environment::GetCurrent(args.GetIsolate());
+  HandleScope scope(env->isolate());
+  
+  if (args.Length() < 2 || !args[0]->IsInt32()) {
+    return THROW_BAD_ARGS;
+  }
+
+  int fd = args[0]->Int32Value();
+
+  Local<Value> cb;
+
+  size_t len;
+  int64_t pos;
+
+  char * buf = NULL;
+
+  if (!Buffer::HasInstance(args[1])) {
+    return env->ThrowError("Second argument needs to be a buffer");
+  }
+
+  Local<Object> buffer_obj = args[1]->ToObject();
+  char *buffer_data = Buffer::Data(buffer_obj);
+  size_t buffer_length = Buffer::Length(buffer_obj);
+
+  size_t off = args[2]->Int32Value();
+  if (off >= buffer_length) {
+    return env->ThrowError("Offset is out of bounds");
+  }
+
+  len = args[3]->Int32Value();
+  if (!Buffer::IsWithinBounds(off, len, buffer_length))
+    return env->ThrowRangeError("Length extends beyond buffer");
+
+  pos = GET_OFFSET(args[4]);
+
+  buf = buffer_data + off;
+
+  // uv_buf_t uvbuf = uv_buf_init(const_cast<char*>(buf), len);
+
+  //SYNC_CALL(read, 0, fd, &uvbuf, 1, pos)
+  SYNC_CALL(read, 0, args)
+  
+  //TODO-CODIUS Store returned string in Buffer?
+  args.GetReturnValue().Set(SYNC_RESULT);
+}
+
+
 ///* fs.chmod(path, mode);
 // * Wrapper for chmod(1) / EIO_CHMOD
 // */
@@ -985,9 +815,9 @@ void InitFs(Handle<Object> target,
       FIXED_ONE_BYTE_STRING(env->isolate(), "FSInitialize"),
       FunctionTemplate::New(env->isolate(), FSInitialize)->GetFunction());
 
-//  NODE_SET_METHOD(target, "close", Close);
-//  NODE_SET_METHOD(target, "open", Open);
-//  NODE_SET_METHOD(target, "read", Read);
+  NODE_SET_METHOD(target, "close", Close);
+  NODE_SET_METHOD(target, "open", Open);
+  NODE_SET_METHOD(target, "read", Read);
 //  NODE_SET_METHOD(target, "fdatasync", Fdatasync);
 //  NODE_SET_METHOD(target, "fsync", Fsync);
 //  NODE_SET_METHOD(target, "rename", Rename);
@@ -996,8 +826,8 @@ void InitFs(Handle<Object> target,
 //  NODE_SET_METHOD(target, "mkdir", MKDir);
 //  NODE_SET_METHOD(target, "readdir", ReadDir);
   NODE_SET_METHOD(target, "stat", Stat);
-//  NODE_SET_METHOD(target, "lstat", LStat);
-//  NODE_SET_METHOD(target, "fstat", FStat);
+  NODE_SET_METHOD(target, "lstat", LStat);
+  NODE_SET_METHOD(target, "fstat", FStat);
 //  NODE_SET_METHOD(target, "link", Link);
 //  NODE_SET_METHOD(target, "symlink", Symlink);
 //  NODE_SET_METHOD(target, "readlink", ReadLink);

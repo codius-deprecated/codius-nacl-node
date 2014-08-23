@@ -41,9 +41,10 @@ function handleSyncFilesystemCall(message_string) {
 		args = message.data;
 	}
 	
-	args.push(syncFilesystemCallback.bind(null, message.callback));
 	
-	if (args[0].indexOf('/') === 0) {
+	args.push(syncFilesystemCallback.bind(null, message.callback));
+
+	if (args[0]!==0 && typeof args[0]==='string' && args[0].indexOf('/') === 0) {
 	  args[0] = '.' + args[0];
 	}
 	
