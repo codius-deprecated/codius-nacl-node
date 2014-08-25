@@ -52,14 +52,14 @@ function handleSyncFilesystemCall(message_string) {
 	
 }
 
-function syncFilesystemCallback(callback_id, error, result) {
+function syncFilesystemCallback(callback_id, error, result, result2) {
 	var response = {
 		type: 'callback',
 		callback: callback_id,
 		error: error,
-		result: result
+		result: result2 ? [ result, result2 ] : result
 	};
-	// console.log('sending response: ', response);
+	
 	sandbox.stdio[4].write(JSON.stringify((response)) + '\n');
 	// sandbox.stdio[4].end();
 }
