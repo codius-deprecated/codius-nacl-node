@@ -1,4 +1,8 @@
+var fs = require('fs');
 console.log('test contract running');
+
+console.log(fs.readdirSync('/'));
+
 
 // // console.log('test-contract');
 

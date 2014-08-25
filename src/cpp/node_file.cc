@@ -154,16 +154,14 @@ static inline bool IsInt64(double x) {
 
 #define SYNC_REQ req_wrap.req
 
-#define SYNC_RESULT !resp_err->IsNull() ? -1 : response->Get(String::NewFromUtf8(        \
+#define SYNC_RESULT !resp_err->IsNull() ? -1 : response->Get(String::NewFromUtf8(\
                                                   env->isolate(),             \
                                                   "result"))->Int32Value()
                                                   //"result"))->ToInt32()->Value()
                                                   
-static int Sync_Call(const char* func, 
+static int Sync_Call(Environment* env, const char* func, 
                      const FunctionCallbackInfo<Value>& args,
                      Handle<Object> *response) {
-  Environment* env = Environment::GetCurrent(args.GetIsolate());
-  HandleScope scope(env->isolate());
   const char newline = '\n';
   size_t bytes_read;
   const int sync_fd = 4;
@@ -184,6 +182,7 @@ static int Sync_Call(const char* func,
       params->Set(i, args[i]);
     }
   }
+
   message->Set(String::NewFromUtf8(env->isolate(), "type"),
                String::NewFromUtf8(env->isolate(), "api"));
   message->Set(String::NewFromUtf8(env->isolate(), "api"),
@@ -288,9 +287,9 @@ static void Stat(const FunctionCallbackInfo<Value>& args) {
     //ASYNC_CALL(stat, args[1], *path)
     return TYPE_ERROR("TODO-CODIUS: Not implemented!");
   } else {
-    SYNC_CALL(stat, *path, args)
     // Handle<Object> response;
-    // Sync_Call("stat", args, &response);
+    // Sync_Call(env, "stat", args, &response);
+    SYNC_CALL(stat, *path, args)
     
     //What if response.result is empty?
     args.GetReturnValue().Set(
@@ -506,38 +505,24 @@ static void FStat(const FunctionCallbackInfo<Value>& args) {
 //
 //  SYNC_CALL(mkdir, *path, *path, mode)
 //}
-//
-//static void ReadDir(const FunctionCallbackInfo<Value>& args) {
-//  Environment* env = Environment::GetCurrent(args.GetIsolate());
-//  HandleScope scope(env->isolate());
-//
-//  if (args.Length() < 1)
-//    return TYPE_ERROR("path required");
-//  if (!args[0]->IsString())
-//    return TYPE_ERROR("path must be a string");
-//
-//  node::Utf8Value path(args[0]);
-//
-//  SYNC_CALL(readdir, *path, *path, 0 /*flags*/)
-//
-//  assert(SYNC_REQ.result >= 0);
-//  char* namebuf = static_cast<char*>(SYNC_REQ.ptr);
-//  uint32_t nnames = SYNC_REQ.result;
-//  Local<Array> names = Array::New(env->isolate(), nnames);
-//
-//  for (uint32_t i = 0; i < nnames; ++i) {
-//    names->Set(i, String::NewFromUtf8(env->isolate(), namebuf));
-//#ifndef NDEBUG
-//    namebuf += strlen(namebuf);
-//    assert(*namebuf == '\0');
-//    namebuf += 1;
-//#else
-//    namebuf += strlen(namebuf) + 1;
-//#endif
-//  }
-//
-//  args.GetReturnValue().Set(names);
-//}
+
+static void ReadDir(const FunctionCallbackInfo<Value>& args) {
+  Environment* env = Environment::GetCurrent(args.GetIsolate());
+  HandleScope scope(env->isolate());
+
+  if (args.Length() < 1)
+    return TYPE_ERROR("path required");
+  if (!args[0]->IsString())
+    return TYPE_ERROR("path must be a string");
+
+  node::Utf8Value path(args[0]);
+
+  SYNC_CALL(readdir, *path, args)
+  
+  Local<Array> names = Handle<Array>::Cast(response->Get(String::NewFromUtf8(env->isolate(), "result")));
+
+  args.GetReturnValue().Set(names);
+}
 
 static void Open(const FunctionCallbackInfo<Value>& args) {
   Environment* env = Environment::GetCurrent(args.GetIsolate());
@@ -918,7 +903,7 @@ void InitFs(Handle<Object> target,
 //  NODE_SET_METHOD(target, "ftruncate", FTruncate);
 //  NODE_SET_METHOD(target, "rmdir", RMDir);
 //  NODE_SET_METHOD(target, "mkdir", MKDir);
-//  NODE_SET_METHOD(target, "readdir", ReadDir);
+  NODE_SET_METHOD(target, "readdir", ReadDir);
   NODE_SET_METHOD(target, "stat", Stat);
   NODE_SET_METHOD(target, "lstat", LStat);
   NODE_SET_METHOD(target, "fstat", FStat);
