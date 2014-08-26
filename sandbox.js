@@ -9,6 +9,13 @@ var concat = require('concat-stream');
 // TODO: Make these configurable
 var NACL_SDK_ROOT = process.env.NACL_SDK_ROOT;
 var RUN_CONTRACT_COMMAND = NACL_SDK_ROOT + '/tools/sel_ldr_x86_32';
+var RUN_CONTRACT_LIBS = [
+	__dirname,
+	path.resolve(__dirname, 'deps/v8/out/nacl_ia32.release/lib.target'),
+	NACL_SDK_ROOT +'/ports/lib/glibc_x86_32/Release',
+	NACL_SDK_ROOT + '/toolchain/linux_x86_glibc/x86_64-nacl/lib32',
+	NACL_SDK_ROOT + '/lib/glibc_x86_32/Debug'
+]
 var RUN_CONTRACT_ARGS = [
   '-h', 
   '3:3', 
@@ -18,8 +25,8 @@ var RUN_CONTRACT_ARGS = [
   '--', 
   NACL_SDK_ROOT + '/toolchain/linux_x86_glibc/x86_64-nacl/lib32/runnable-ld.so', 
   '--library-path', 
-  '.:deps/v8/out/nacl_ia32.release/lib.target:' + NACL_SDK_ROOT +'/ports/lib/glibc_x86_32/Release:' + NACL_SDK_ROOT + '/toolchain/linux_x86_glibc/x86_64-nacl/lib32:' + NACL_SDK_ROOT + '/lib/glibc_x86_32/Debug', 
-  './node_nacl.nexe'
+  RUN_CONTRACT_LIBS.join(':'),
+  path.resolve(__dirname, 'node_nacl.nexe')
 ];
 
 
@@ -35,6 +42,7 @@ function Sandbox(opts) {
 
 	self.stdio = null;
 	self._timeout = opts.timeout || 1000;
+	self._apiClass = opts.api || null;
 
 	self._native_client_child = null;
 	// self._ready = false;
@@ -58,6 +66,10 @@ Sandbox.prototype.run = function(manifest_hash, file_path) {
 		self.emit('exit', code);
 	});
 	self.stdio = self._native_client_child.stdio;
+
+	if (this._apiClass) {
+		this._api = new this._apiClass(this);
+	}
 
 	// // Set up stdin, stdout, stderr, ipc
 	// if (self._stdin) {
