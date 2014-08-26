@@ -195,7 +195,22 @@ Local<Value> BuildStatsObject(Environment* env, const Handle<Object> src) {
   EscapableHandleScope handle_scope(env->isolate());
   
   // Pass stats as the first argument, this is the object we are modifying.
-  Local<Value> argv[] = { src };
+  Local<Value> argv[] = {
+    src->Get(String::NewFromUtf8(env->isolate(), "dev")),
+    src->Get(String::NewFromUtf8(env->isolate(), "mode")),
+    src->Get(String::NewFromUtf8(env->isolate(), "nlink")),
+    src->Get(String::NewFromUtf8(env->isolate(), "uid")),
+    src->Get(String::NewFromUtf8(env->isolate(), "gid")),
+    src->Get(String::NewFromUtf8(env->isolate(), "rdev")),
+    src->Get(String::NewFromUtf8(env->isolate(), "blksize")),
+    src->Get(String::NewFromUtf8(env->isolate(), "ino")),
+    src->Get(String::NewFromUtf8(env->isolate(), "size")),
+    src->Get(String::NewFromUtf8(env->isolate(), "blocks")),
+    src->Get(String::NewFromUtf8(env->isolate(), "atim_msec")),
+    src->Get(String::NewFromUtf8(env->isolate(), "mtim_msec")),
+    src->Get(String::NewFromUtf8(env->isolate(), "ctim_msec")),
+    src->Get(String::NewFromUtf8(env->isolate(), "birthtim_msec"))
+  };
 
   // Call out to JavaScript to create the stats object.
   Local<Value> stats =
@@ -617,11 +632,7 @@ static void Read(const FunctionCallbackInfo<Value>& args) {
   if (args.Length() < 2 || !args[0]->IsInt32()) {
     return THROW_BAD_ARGS;
   }
-
-  int fd = args[0]->Int32Value();
-
-  Local<Value> cb;
-
+  
   size_t len;
   int64_t pos;
 
