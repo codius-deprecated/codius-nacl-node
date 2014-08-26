@@ -82,94 +82,25 @@ static inline bool IsInt64(double x) {
   return x == static_cast<double>(static_cast<int64_t>(x));
 }
 
-//Local<Array> params = { __VA_ARGS__ };
-#define SYNC_DEST_CALL(func, path, dest, args)                                \
-  const char newline = '\n';                                                  \
-  size_t bytes_read;                                                          \
-  const int sync_fd = 4;                                                      \
-  Local<Object> message = Object::New(env->isolate());                        \
-  Handle<Array> params;                                                       \
-  if (0==strcmp(#func, "read")) {                                             \
-    params = Array::New(env->isolate(), 4);                                   \
-    params->Set(0, args[0]);                                                  \
-    params->Set(1, args[3]);                                                  \
-    params->Set(2, args[4]);                                                  \
-    params->Set(3, String::NewFromUtf8(env->isolate(), "utf8"));              \
-  } else {                                                                    \
-    params = Array::New(env->isolate(), args.Length());                       \
-    for (int i=0; i<args.Length(); ++i) {                                     \
-      params->Set(i, args[i]);                                                \
-    }                                                                         \
-  }                                                                           \
-  message->Set(String::NewFromUtf8(env->isolate(), "type"),                   \
-               String::NewFromUtf8(env->isolate(), "api"));                   \
-  message->Set(String::NewFromUtf8(env->isolate(), "api"),                    \
-               String::NewFromUtf8(env->isolate(), "fs"));                    \
-  message->Set(String::NewFromUtf8(env->isolate(), "method"),                 \
-               String::NewFromUtf8(env->isolate(), #func));                   \
-  message->Set(String::NewFromUtf8(env->isolate(), "data"),                   \
-               params);                                                       \
-  /* Stringify the JSON message. */                                           \
-  Local<Object> global = env->context()->Global();                            \
-  Handle<Object> JSON = global->Get(String::NewFromUtf8(                      \
-                                      env->isolate(), "JSON"))->ToObject();   \
-  Handle<Function> JSON_stringify = Handle<Function>::Cast(JSON->Get(         \
-                                      String::NewFromUtf8(env->isolate(),     \
-                                                          "stringify")));     \
-  Local<Value> stringify_args[] = { message };                                \
-  Local<Value> message_json = JSON_stringify->Call(JSON, 1, stringify_args);  \
-  node::Utf8Value message_v(message_json);                                    \
-  if (-1==write(sync_fd, *message_v, strlen(*message_v)) ||                   \
-      -1==write(sync_fd, &newline, 1)) {                                      \
-    perror("write()");                                                        \
-    return TYPE_ERROR("Error writing to sync_fd 4");                          \
-  }                                                                           \
-  if (!message_v.length())                                                    \
-    return TYPE_ERROR("error converting json to string");                     \
-  char resp_buf[1024];                                                        \
-  Local<String> response_str = String::NewFromUtf8(env->isolate(), "");       \
-  do {                                                                        \
-    bytes_read = read(sync_fd, resp_buf, sizeof(resp_buf));                   \
-    if (bytes_read==-1)                                                       \
-      return TYPE_ERROR("Error reading from sync_fd 4");                      \
-    response_str = String::Concat (response_str, String::NewFromUtf8(         \
-      env->isolate(), resp_buf, String::kNormalString, bytes_read));          \
-  } while (bytes_read==sizeof(resp_buf) && resp_buf[bytes_read-1]!='\n');     \
-  /* Parse the response */                                                    \
-  Handle<Function> JSON_parse = Handle<Function>::Cast(JSON->Get(             \
-                                  String::NewFromUtf8(env->isolate(),         \
-                                                      "parse")));             \
-  Local<Value> parse_args[] = { response_str };                               \
-  Local<Object> response = JSON_parse->Call(JSON, 1, parse_args)->ToObject(); \
-  Handle<Value> resp_err = response->Get(String::NewFromUtf8(env->isolate(),  \
-                                                             "error"));       \
-  //TODO-CODIUS Is resp_err identical to what is produced by ErrnoException() in node.cc?\
-  if (!resp_err->IsNull()) {                                                  \
-    env->isolate()->ThrowException(resp_err);                                 \
-    return;                                                                   \
-  }                                                                           \
-
-#define SYNC_CALL(func, path, args)                                           \
-  SYNC_DEST_CALL(func, path, NULL, args)                                      \
-
-#define SYNC_REQ req_wrap.req
-
-#define SYNC_RESULT !resp_err->IsNull() ? -1 : response->Get(String::NewFromUtf8(\
+#define SYNC_RESULT !response->Get(String::NewFromUtf8(                       \
+                                     env->isolate(), "error"))->IsNull() ? -1 :\
+                                     response->Get(String::NewFromUtf8(\
                                                   env->isolate(),             \
                                                   "result"))->Int32Value()
-                                                  //"result"))->ToInt32()->Value()
                                                   
 static int Sync_Call(Environment* env, const char* func, 
                      const FunctionCallbackInfo<Value>& args,
-                     Handle<Object> *response) {
+                     Handle<Object>* response) {
+  // If you hit this assertion, you forgot to enter the v8::Context first.
+  assert(env->context() == env->isolate()->GetCurrentContext());
   const char newline = '\n';
   size_t bytes_read;
   const int sync_fd = 4;
   Local<Object> message = Object::New(env->isolate());
   Handle<Array> params;
   
-  /* Use legacy string interface for read so buffer isn't passed in:
-     (fd, length, position, encoding) */
+  // Use legacy string interface for read so buffer isn't passed in:
+  // (fd, length, position, encoding)
   if (0==strcmp(func, "read")) {
     params = Array::New(env->isolate(), 4);
     params->Set(0, args[0]);
@@ -192,7 +123,7 @@ static int Sync_Call(Environment* env, const char* func,
   message->Set(String::NewFromUtf8(env->isolate(), "data"),
                params);
                
-  /* Stringify the JSON message. */
+  // Stringify the JSON message.
   Local<Object> global = env->context()->Global();
   Handle<Object> JSON = global->Get(String::NewFromUtf8(
                                       env->isolate(), "JSON"))->ToObject();
@@ -202,27 +133,31 @@ static int Sync_Call(Environment* env, const char* func,
   Local<Value> stringify_args[] = { message };
   Local<Value> message_json = JSON_stringify->Call(JSON, 1, stringify_args);
   node::Utf8Value message_v(message_json);
+  if (!message_v.length()) {
+    TYPE_ERROR("error converting json to string");
+    return -1;
+  }
+  
   if (-1==write(sync_fd, *message_v, strlen(*message_v)) ||
       -1==write(sync_fd, &newline, 1)) {
     perror("write()");
     TYPE_ERROR("Error writing to sync_fd 4");
     return -1;
   }
-  if (!message_v.length())
-    TYPE_ERROR("error converting json to string");
-    return -1;
+  
   char resp_buf[1024];
   Local<String> response_str = String::NewFromUtf8(env->isolate(), "");
   do {
     bytes_read = read(sync_fd, resp_buf, sizeof(resp_buf));
-    if (bytes_read==-1)
+    if (bytes_read==-1) {
       TYPE_ERROR("Error reading from sync_fd 4");
       return -1;
+    }
     response_str = String::Concat (response_str, String::NewFromUtf8(
       env->isolate(), resp_buf, String::kNormalString, bytes_read));
   } while (bytes_read==sizeof(resp_buf) && resp_buf[bytes_read-1]!='\n');
   
-  /* Parse the response */
+  // Parse the response.
   Handle<Function> JSON_parse = Handle<Function>::Cast(JSON->Get(
                                   String::NewFromUtf8(env->isolate(),
                                                       "parse")));
@@ -233,7 +168,10 @@ static int Sync_Call(Environment* env, const char* func,
   //TODO-CODIUS Is resp_err identical to what is produced by ErrnoException() in node.cc?
   if (!resp_err->IsNull()) {
     env->isolate()->ThrowException(resp_err);
+    return -1;
   }
+  
+  return 0;
 }
 
 
@@ -245,10 +183,8 @@ static void Close(const FunctionCallbackInfo<Value>& args) {
     return THROW_BAD_ARGS;
   }
 
-  // int fd = args[0]->Int32Value();
-
-  // SYNC_CALL(close, 0, fd)
-  SYNC_CALL(close, 0, args);
+  Handle<Object> response;
+  Sync_Call(env, "close", args, &response);
 }
 
 
@@ -287,14 +223,14 @@ static void Stat(const FunctionCallbackInfo<Value>& args) {
     //ASYNC_CALL(stat, args[1], *path)
     return TYPE_ERROR("TODO-CODIUS: Not implemented!");
   } else {
-    // Handle<Object> response;
-    // Sync_Call(env, "stat", args, &response);
-    SYNC_CALL(stat, *path, args)
+    Handle<Object> response;
+    if (-1==Sync_Call(env, "stat", args, &response))
+      return;
     
     //What if response.result is empty?
     args.GetReturnValue().Set(
-        BuildStatsObject(env, 
-          response->Get(String::NewFromUtf8(env->isolate(), "result"))->ToObject()));
+      BuildStatsObject(env, 
+        response->Get(String::NewFromUtf8(env->isolate(), "result"))->ToObject()));
   }
 }
 
@@ -307,10 +243,9 @@ static void LStat(const FunctionCallbackInfo<Value>& args) {
   if (!args[0]->IsString())
     return TYPE_ERROR("path must be a string");
 
-  node::Utf8Value path(args[0]);
-
-  //SYNC_CALL(lstat, *path, *path)
-  SYNC_CALL(lstat, *path, args)
+  Handle<Object> response;
+  if (-1==Sync_Call(env, "lstat", args, &response))
+    return;
   args.GetReturnValue().Set(
     BuildStatsObject(env, 
       response->Get(String::NewFromUtf8(env->isolate(), "result"))->ToObject()));
@@ -323,11 +258,9 @@ static void FStat(const FunctionCallbackInfo<Value>& args) {
   if (args.Length() < 1 || !args[0]->IsInt32()) {
     return THROW_BAD_ARGS;
   }
-
-  // int fd = args[0]->Int32Value();
-
-  // SYNC_CALL(fstat, 0, fd)
-  SYNC_CALL(fstat, 0, args)
+  
+  Handle<Object> response;
+  Sync_Call(env, "fstat", args, &response);
   args.GetReturnValue().Set(
     BuildStatsObject(env, 
       response->Get(String::NewFromUtf8(env->isolate(), "result"))->ToObject()));
@@ -515,9 +448,9 @@ static void ReadDir(const FunctionCallbackInfo<Value>& args) {
   if (!args[0]->IsString())
     return TYPE_ERROR("path must be a string");
 
-  node::Utf8Value path(args[0]);
-
-  SYNC_CALL(readdir, *path, args)
+  Handle<Object> response;
+  if (-1==Sync_Call(env, "readdir", args, &response))
+    return;
   
   Local<Array> names = Handle<Array>::Cast(response->Get(String::NewFromUtf8(env->isolate(), "result")));
 
@@ -542,12 +475,8 @@ static void Open(const FunctionCallbackInfo<Value>& args) {
   if (!args[2]->IsInt32())
     return TYPE_ERROR("mode must be an int");
 
-  node::Utf8Value path(args[0]);
-  // int flags = args[1]->Int32Value();
-  // int mode = static_cast<int>(args[2]->Int32Value());
-
-  // SYNC_CALL(open, *path, *path, flags, mode)
-  SYNC_CALL(open, *path, args)
+  Handle<Object> response;
+  Sync_Call(env, "open", args, &response);
   args.GetReturnValue().Set(SYNC_RESULT);
 }
 
@@ -715,11 +644,10 @@ static void Read(const FunctionCallbackInfo<Value>& args) {
   if (!Buffer::IsWithinBounds(off, len, buffer_length))
     return env->ThrowRangeError("Length extends beyond buffer");
 
-  //pos = GET_OFFSET(args[4]);
-
   buf = buffer_data + off;
 
-  SYNC_CALL(read, 0, args)
+  Handle<Object> response;
+  Sync_Call(env, "read", args, &response);
   
   /* Legacy read returns [str, bytesRead] */
   Handle<Array> results = Handle<Array>::Cast(response->Get(String::NewFromUtf8(env->isolate(), "result")));
