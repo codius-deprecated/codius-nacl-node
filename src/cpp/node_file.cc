@@ -87,7 +87,7 @@ static inline bool IsInt64(double x) {
                                      response->Get(String::NewFromUtf8(\
                                                   env->isolate(),             \
                                                   "result"))->Int32Value()
-                                                  
+
 static int Sync_Call(Environment* env, const char* func, 
                      const FunctionCallbackInfo<Value>& args,
                      Handle<Object>* response) {
@@ -164,10 +164,31 @@ static int Sync_Call(Environment* env, const char* func,
   Local<Value> parse_args[] = { response_str };
   *response = Handle<Object> (JSON_parse->Call(JSON, 1, parse_args)->ToObject());
   Handle<Value> resp_err = (*response)->Get(String::NewFromUtf8(env->isolate(),
-                                                             "error"));
-  //TODO-CODIUS Is resp_err identical to what is produced by ErrnoException() in node.cc?
+                                                                "error"));
   if (!resp_err->IsNull()) {
-    env->isolate()->ThrowException(resp_err);
+    Handle<Object> resp_obj = resp_err->ToObject();
+
+    Local<String> estring = 
+        resp_obj->Get(String::NewFromUtf8(env->isolate(), "code"))->ToString();
+    
+    //TODO-CODIUS Get the error message using only the error code.    
+    Local<String> message = String::NewFromUtf8(env->isolate(), func);
+    Local<String> path = 
+        resp_obj->Get(String::NewFromUtf8(env->isolate(), "path"))->ToString();
+    
+    Local<String> cons1 =
+        String::Concat(estring, FIXED_ONE_BYTE_STRING(env->isolate(), ", "));
+    Local<String> cons2 = 
+        String::Concat(cons1, message);
+    Local<String> cons3 =
+        String::Concat(cons2, FIXED_ONE_BYTE_STRING(env->isolate(), " '"));
+    Local<String> cons4 =
+        String::Concat(cons3, path);
+    Local<String> cons5 =
+        String::Concat(cons4, FIXED_ONE_BYTE_STRING(env->isolate(), "'"));
+
+    env->ThrowError(env->isolate(), *Utf8Value(cons5));
+
     return -1;
   }
   
@@ -491,8 +512,13 @@ static void Open(const FunctionCallbackInfo<Value>& args) {
     return TYPE_ERROR("mode must be an int");
 
   Handle<Object> response;
-  Sync_Call(env, "open", args, &response);
-  args.GetReturnValue().Set(SYNC_RESULT);
+  if (-1==Sync_Call(env, "open", args, &response)) {
+    args.GetReturnValue().Set(-1);
+  } else {
+    args.GetReturnValue().Set(response->Get(String::NewFromUtf8(
+                                              env->isolate(),
+                                              "result"))->Int32Value());
+  }
 }
 
 
