@@ -329,10 +329,11 @@ public:
   }
 
   inline bool HasActiveHandles() const {
-    return active_handles_ > 0;
+    return active_handles_ > 1;
   }
 
   inline bool HasActiveRequests() const {
+    //return (QUEUE_EMPTY(&(loop)->active_reqs) == 0)
     return false;
   }
 
@@ -459,7 +460,7 @@ public:
 
       if (mode == modeRunOnce) {
         /* modeRunOnce implies forward progess: at least one callback must have
-         * been invoked when it returns. uv__io_poll() can return without doing
+         * been invoked when it returns. PollIo() can return without doing
          * I/O (meaning: no callbacks) when its timeout expires - which means we
          * have pending timers that satisfy the forward progress constraint.
          *
@@ -480,6 +481,8 @@ public:
     // dirtying a cache line.
     if (stop_flag_ != 0)
       stop_flag_ = 0;
+
+    return r;
   }
 
 private:

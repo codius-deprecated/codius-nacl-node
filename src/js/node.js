@@ -57,7 +57,6 @@
     //startup.processSignalHandlers();
 
     startup.processChannel();
-    startup.syncCommandChannel();
 
     //startup.processRawDebug();
 
@@ -628,17 +627,6 @@
     //   cp._forkChild(fd);
     //   assert(process.send);
     // }
-  };
-  
-  startup.syncCommandChannel = function() {
-    var fd = 4;
-    
-    var net = NativeModule.require('net');
-    async_rpc = new net.Socket({
-      fd: fd,
-      readable: true,
-      writable: true
-    });
   };
 
 
