@@ -28,7 +28,8 @@ var RUN_CONTRACT_ARGS = [
   RUN_CONTRACT_LIBS.join(':'),
   path.resolve(__dirname, 'node_nacl.nexe')
 ];
-
+var RUN_CONTRACT_COMMAND_NONACL = path.resolve(__dirname, 'node_nacl');
+var RUN_CONTRACT_ARGS_NONACL = []
 
 /**
  * Sandbox class wrapper around Native Client
@@ -43,6 +44,7 @@ function Sandbox(opts) {
 	self.stdio = null;
 	self._timeout = opts.timeout || 1000;
 	self._apiClass = opts.api || null;
+	self._disableNaCl = opts.disableNaCl || false;
 
 	self._native_client_child = null;
 	// self._ready = false;
@@ -61,7 +63,7 @@ Sandbox.prototype.run = function(manifest_hash, file_path) {
 	var self = this;
 
 	// Create new sandbox
-	self._native_client_child = spawnChildToRunCode(file_path);
+	self._native_client_child = spawnChildToRunCode(file_path, self._disableNaCl);
 	self._native_client_child.on('exit', function(code){
 		self.emit('exit', code);
 	});
@@ -88,11 +90,12 @@ Sandbox.prototype.run = function(manifest_hash, file_path) {
 // 	return wrapped;
 // }
 
-function spawnChildToRunCode(code) {
-	var args = RUN_CONTRACT_ARGS.slice();
+function spawnChildToRunCode(code, disableNaCl) {
+	var cmd = disableNaCl ? RUN_CONTRACT_COMMAND_NONACL : RUN_CONTRACT_COMMAND;
+	var args = disableNaCl ? RUN_CONTRACT_ARGS_NONACL.slice() : RUN_CONTRACT_ARGS.slice();
 	args.push(code);
 
-	var child = spawn(RUN_CONTRACT_COMMAND, args, { 
+	var child = spawn(cmd, args, {
 	  stdio: [
 	    'pipe',
 	    'pipe',
