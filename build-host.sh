@@ -5,6 +5,8 @@ python tools/js2c.py src/cpp/node_natives.h src/js/*.js
 g++ -m32 \
   -Ideps/v8/include \
   -Ideps/uv/include \
+  -Ideps/http_parser \
+  deps/http_parser/http_parser.c \
   deps/uv/src/threadpool.c \
   deps/uv/src/io.c \
   deps/uv/src/event_loop.cc \
@@ -18,6 +20,7 @@ g++ -m32 \
   src/cpp/node_buffer.cc \
   src/cpp/smalloc.cc \
   src/cpp/node_contextify.cc \
+  src/cpp/node_http_parser.cc \
   src/cpp/pipe_wrap.cc \
   src/cpp/handle_wrap.cc \
   src/cpp/timer_wrap.cc \
