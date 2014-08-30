@@ -24,7 +24,7 @@
 
 #include "async-wrap.h"
 #include "env.h"
-#include "event_loop.h"
+#include "event_loop.hpp"
 #include "node.h"
 #include "queue.h"
 #include "v8.h"

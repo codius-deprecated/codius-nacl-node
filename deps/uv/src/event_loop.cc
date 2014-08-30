@@ -1,8 +1,12 @@
 
-#include "event_loop.h"
+#include "event_loop.hpp"
+#include "uv-common.h"
+#include "internal.h"
 
 #include <errno.h>
 #include <unistd.h>
+
+int uv_codius_async_init(uv_loop_t* loop);
 
 namespace node {
 
@@ -14,7 +18,7 @@ void EventLoop::Init() {
 
   heap_init((struct heap*) &timer_heap_);
 //  QUEUE_INIT(&loop->wq);
-//  QUEUE_INIT(&loop->active_reqs);
+  QUEUE_INIT(&loop_.active_reqs);
 //  QUEUE_INIT(&loop->idle_handles);
 //  QUEUE_INIT(&loop->async_handles);
 //  QUEUE_INIT(&loop->check_handles);
@@ -24,11 +28,13 @@ void EventLoop::Init() {
     QUEUE_INIT(&loop_watcher_handles_[i]);
   }
 
-  nfds_ = 0;
-  watchers_ = NULL;
-  nwatchers_ = 0;
-//  QUEUE_INIT(&loop->pending_queue);
-  QUEUE_INIT(&watcher_queue_);
+  loop_.nfds = 0;
+  loop_.watchers = NULL;
+  loop_.nwatchers = 0;
+  QUEUE_INIT(&loop_.pending_queue);
+  QUEUE_INIT(&loop_.watcher_queue);
+  
+  loop_.async_callbacks = NULL;
 
   closing_handles_ = NULL;
   UpdateTime();
@@ -56,6 +62,9 @@ void EventLoop::Init() {
 
 //  if (uv_async_init(loop, &loop->wq_async, uv__work_done))
 //    abort();
+
+  if (uv_codius_async_init(&loop_))
+    abort();
 
 //  uv__handle_unref(&loop->wq_async);
 //  loop->wq_async.flags |= UV__HANDLE_INTERNAL;
@@ -156,84 +165,90 @@ void EventLoop::TimerHandle::Again() {
   }
 }
 
-void EventLoop::IoWatcher::Init(IoCallback cb, int fd) {
-  assert(cb != NULL);
-  assert(fd >= -1);
+// void EventLoop::IoWatcher::Init(IoCallback cb, int fd) {
+//   assert(cb != NULL);
+//   assert(fd >= -1);
 
-  //QUEUE_INIT(&pending_queue_);
-  QUEUE_INIT(&watcher_queue_);
+//   //QUEUE_INIT(&pending_queue_);
+//   QUEUE_INIT(&watcher_queue_);
 
-  cb_ = cb;
-  fd_ = fd;
-  pevents_ = 0;
+//   cb_ = cb;
+//   fd_ = fd;
+//   pevents_ = 0;
+// }
+
+// void EventLoop::IoWatcher::Start(EventLoop* loop, unsigned int events) {
+//   assert(0 == (events & ~(UV__POLLIN | UV__POLLOUT)));
+//   assert(0 != events);
+//   assert(fd_ >= 0);
+//   assert(fd_ < INT_MAX);
+
+//   pevents_ |= events;
+//   loop->MaybeResize(fd_ + 1);
+
+//   if (QUEUE_EMPTY(&watcher_queue_)) {
+//     QUEUE_INSERT_TAIL(&loop->watcher_queue_, &watcher_queue_);
+//   }
+
+//   if (loop->watchers_[fd_] == NULL) {
+//     loop->watchers_[fd_] = this;
+//     loop->nfds_++;
+//   }
+// }
+
+// void EventLoop::IoWatcher::Stop(EventLoop* loop, unsigned int events) {
+//   assert(0 == (events & ~(UV__POLLIN | UV__POLLOUT)));
+//   assert(0 != events);
+
+//   if (fd_ == -1)
+//     return;
+
+//   assert(fd_ >= 0);
+
+//   /* Happens when Stop() is called on a handle that was never started. */
+//   if ((unsigned) fd_ >= loop->nwatchers_)
+//     return;
+
+//   pevents_ &= ~events;
+
+//   if (pevents_ == 0) {
+//     QUEUE_REMOVE(&watcher_queue_);
+//     QUEUE_INIT(&watcher_queue_);
+
+//     if (loop->watchers_[fd_] != NULL) {
+//       assert(loop->watchers_[fd_] == this);
+//       assert(loop->nfds_ > 0);
+//       loop->watchers_[fd_] = NULL;
+//       loop->nfds_--;
+// //      events_ = 0;
+//     }
+//   }
+//   else if (QUEUE_EMPTY(&watcher_queue_))
+//     QUEUE_INSERT_TAIL(&loop->watcher_queue_, &watcher_queue_);
+// }
+
+void EventLoop::PipeHandle::Init(EventLoop* loop, bool ipc) {
+  Handle::Init(loop, handleTypePipe);
+
+  uv__io_init(&watcher_, OnIo, -1);
 }
 
-void EventLoop::IoWatcher::Start(EventLoop* loop, unsigned int events) {
-  assert(0 == (events & ~(ioEventIn | ioEventOut)));
-  assert(0 != events);
-  assert(fd_ >= 0);
-  assert(fd_ < INT_MAX);
-
-  pevents_ |= events;
-  loop->MaybeResize(fd_ + 1);
-
-  if (QUEUE_EMPTY(&watcher_queue_)) {
-    QUEUE_INSERT_TAIL(&loop->watcher_queue_, &watcher_queue_);
-  }
-
-  if (loop->watchers_[fd_] == NULL) {
-    loop->watchers_[fd_] = this;
-    loop->nfds_++;
-  }
-}
-
-void EventLoop::IoWatcher::Stop(EventLoop* loop, unsigned int events) {
-  assert(0 == (events & ~(ioEventIn | ioEventOut)));
-  assert(0 != events);
-
-  if (fd_ == -1)
-    return;
-
-  assert(fd_ >= 0);
-
-  /* Happens when Stop() is called on a handle that was never started. */
-  if ((unsigned) fd_ >= loop->nwatchers_)
-    return;
-
-  pevents_ &= ~events;
-
-  if (pevents_ == 0) {
-    QUEUE_REMOVE(&watcher_queue_);
-    QUEUE_INIT(&watcher_queue_);
-
-    if (loop->watchers_[fd_] != NULL) {
-      assert(loop->watchers_[fd_] == this);
-      assert(loop->nfds_ > 0);
-      loop->watchers_[fd_] = NULL;
-      loop->nfds_--;
-//      events_ = 0;
-    }
-  }
-  else if (QUEUE_EMPTY(&watcher_queue_))
-    QUEUE_INSERT_TAIL(&loop->watcher_queue_, &watcher_queue_);
-}
-
-void EventLoop::PipeHandle::OnIo(EventLoop* loop,
-                                 IoWatcher* watcher,
+void EventLoop::PipeHandle::OnIo(uv_loop_t* loop,
+                                 uv__io_t* watcher,
                                  unsigned int events) {
   PipeHandle* pipe = ContainerOf(&PipeHandle::watcher_, watcher);
 
   assert(pipe->type_ = handleTypePipe);
   assert(!(pipe->flags_ & fClosing));
 
-  assert(watcher->fd_ >= 0);
+  assert(watcher->fd >= 0);
 
-  if (events & (ioEventIn | ioEventErr)) {
+  if (events & (UV__POLLIN | UV__POLLERR)) {
     pipe->Read();
   }
 
   // Read callback may close pipe
-  if (watcher->fd_ == -1) {
+  if (watcher->fd == -1) {
     return;
   }
 
@@ -243,7 +258,7 @@ void EventLoop::PipeHandle::OnIo(EventLoop* loop,
    * have to do anything. If the partial read flag is not set, we can't
    * report the EOF yet because there is still data to read.
    */
-  if ((events & ioEventHup) &&
+  if ((events & UV__POLLHUP) &&
       (pipe->flags_ & fStreamReading) &&
       (pipe->flags_ & fStreamReadPartial) &&
       !(pipe->flags_ & fStreamReadEof)) {
@@ -252,7 +267,7 @@ void EventLoop::PipeHandle::OnIo(EventLoop* loop,
   }
 
   // EOF callback may close pipe
-  if (watcher->fd_ == -1) {
+  if (watcher->fd == -1) {
     return;
   }
 
@@ -271,13 +286,13 @@ int EventLoop::PipeHandle::ReadStart(AllocCallback alloc_cb,
                                      ReadCallback read_cb) {
   flags_ |= fStreamReading;
 
-  assert(watcher_.fd_ >= 0);
+  assert(watcher_.fd >= 0);
   assert(alloc_cb);
 
   alloc_cb_ = alloc_cb;
   read_cb_ = read_cb;
 
-  watcher_.Start(loop_, ioEventIn);
+  uv__io_start(loop_->loop(), &watcher_, UV__POLLIN);
   Handle::Start();
 
   return 0;
@@ -285,8 +300,8 @@ int EventLoop::PipeHandle::ReadStart(AllocCallback alloc_cb,
 
 int EventLoop::PipeHandle::ReadStop() {
   flags_ &= ~fStreamReading;
-  watcher_.Stop(loop_, ioEventIn);
-  if (!watcher_.IsActive(ioEventOut))
+  uv__io_stop(loop_->loop(), &watcher_, UV__POLLIN);
+  if (!uv__io_active(&watcher_, UV__POLLOUT))
     Handle::Stop();
 
   alloc_cb_ = NULL;
@@ -329,11 +344,11 @@ void EventLoop::PipeHandle::Read() {
 //    }
 //
     assert(buf.base != NULL);
-    assert(watcher_.fd_ >= 0);
+    assert(watcher_.fd >= 0);
 //
 //    if (!is_ipc) {
       do {
-        nread = read(watcher_.fd_, buf.base, buf.len);
+        nread = read(watcher_.fd, buf.base, buf.len);
       }
       while (nread < 0 && errno == EINTR);
 //    } else {
@@ -398,14 +413,21 @@ void EventLoop::PipeHandle::Read() {
 
 void EventLoop::PipeHandle::Eof(Buffer* buf) {
   flags_ |= fStreamReadEof;
-  watcher_.Stop(loop_, ioEventIn);
-  if (!watcher_.IsActive(ioEventOut))
+  uv__io_stop(loop_->loop(), &watcher_, UV__POLLIN);
+  if (!uv__io_active(&watcher_, UV__POLLOUT))
     Handle::Stop();
   read_cb_(this, errEOF, buf);
 }
 
+inline void EventLoop::PipeHandle::Destroy() {
+  QUEUE* q;
+
+  assert(!uv__io_active(&watcher_, UV__POLLIN | UV__POLLOUT));
+  assert(flags_ & fClosed);
+}
+
 void EventLoop::PollIo(int timeout) {
-  IoWatcher* watcher;
+  uv__io_t* watcher;
   uint64_t base;
   uint64_t diff;
   int nevents;
@@ -414,29 +436,29 @@ void EventLoop::PollIo(int timeout) {
   int fd;
   int i;
 
-  if (nfds_ == 0) {
-    assert(QUEUE_EMPTY(&watcher_queue_));
+  if (loop_.nfds == 0) {
+    assert(QUEUE_EMPTY(&loop_.watcher_queue));
     return;
   }
 
   // QUEUE_FOREACH is unsafe if the the callback removes the watcher from the
   // queue. So instead we do this.
-  ASSERT(QUEUE_EMPTY(&watcher_queue_) == false);
+  ASSERT(QUEUE_EMPTY(&loop_.watcher_queue) == false);
   QUEUE queue;
-  QUEUE* q = QUEUE_HEAD(&watcher_queue_);
-  QUEUE_SPLIT(&watcher_queue_, q, &queue);
+  QUEUE* q = QUEUE_HEAD(&loop_.watcher_queue);
+  QUEUE_SPLIT(&loop_.watcher_queue, q, &queue);
   while (QUEUE_EMPTY(&queue) == false) {
     q = QUEUE_HEAD(&queue);
     QUEUE_REMOVE(q);
-    QUEUE_INSERT_TAIL(&watcher_queue_, q);
+    QUEUE_INSERT_TAIL(&loop_.watcher_queue, q);
 
-    watcher = ContainerOf(&IoWatcher::watcher_queue_, q);
+    watcher = ContainerOf(&uv__io_t::watcher_queue, q);
 
-    assert(watcher->fd_ >= 0);
-    assert(watcher->fd_ < (int) nwatchers_);
+    assert(watcher->fd >= 0);
+    assert(watcher->fd < (int) loop_.nwatchers);
 
-    if (watcher->pevents_ & (ioEventIn | ioEventOut)) {
-      watcher->cb_(this, watcher, watcher->pevents_ & (ioEventIn | ioEventOut));
+    if (watcher->pevents & (UV__POLLIN | UV__POLLOUT)) {
+      watcher->cb(loop(), watcher, watcher->pevents & (UV__POLLIN | UV__POLLOUT));
     }
   }
 }

@@ -1,7 +1,10 @@
 var fs = require('fs');
 console.log('test contract running');
+fs.stat('sandbox.js', function(err, data){
+    console.log("Stat for sandbox.js", data);
+});
 
-console.log(fs.readdirSync('/'));
+//console.log(fs.readdirSync('/'));
 
 
 // // console.log('test-contract');

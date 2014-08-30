@@ -24,7 +24,8 @@
 
 #include "tree.h"
 #include "util.h"
-#include "event_loop.h"
+#include "event_loop.hpp"
+#include "uv.h"
 #include "v8.h"
 #include "queue.h"
 

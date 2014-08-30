@@ -428,7 +428,7 @@ typedef void (*uv_exit_cb)(uv_process_t*, int64_t exit_status, int term_signal);
 typedef void (*uv_walk_cb)(uv_handle_t* handle, void* arg);
 typedef void (*uv_fs_cb)(uv_fs_t* req);
 typedef void (*uv_work_cb)(uv_work_t* req);
-typedef void (*uv_after_work_cb)(uv_work_t* req, int status);
+typedef void (*uv_after_work_cb)(uv_work_t* req, int status, const char *buf, size_t buf_len);
 typedef void (*uv_getaddrinfo_cb)(uv_getaddrinfo_t* req,
                                   int status,
                                   struct addrinfo* res);
@@ -1708,7 +1708,8 @@ struct uv_work_s {
 /* Queues a work request to execute asynchronously on the thread pool. */
 UV_EXTERN int uv_queue_work(uv_loop_t* loop,
                             uv_work_t* req,
-                            uv_work_cb work_cb,
+                            const char *buf,
+                            size_t buf_len,
                             uv_after_work_cb after_work_cb);
 
 /* Cancel a pending request. Fails if the request is executing or has finished

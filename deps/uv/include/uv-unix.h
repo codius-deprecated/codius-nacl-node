@@ -44,20 +44,22 @@
 
 #include "uv-threadpool.h"
 
-#if defined(__linux__)
-# include "uv-linux.h"
-#elif defined(_AIX)
-# include "uv-aix.h"
-#elif defined(__sun)
-# include "uv-sunos.h"
-#elif defined(__APPLE__)
-# include "uv-darwin.h"
-#elif defined(__DragonFly__)  || \
-      defined(__FreeBSD__)    || \
-      defined(__OpenBSD__)    || \
-      defined(__NetBSD__)
-# include "uv-bsd.h"
-#endif
+// TODO-CODIUS Detect platform dynamically
+#include "uv-codius.h"
+// #if defined(__linux__)
+// # include "uv-linux.h"
+// #elif defined(_AIX)
+// # include "uv-aix.h"
+// #elif defined(__sun)
+// # include "uv-sunos.h"
+// #elif defined(__APPLE__)
+// # include "uv-darwin.h"
+// #elif defined(__DragonFly__)  || \
+//       defined(__FreeBSD__)    || \
+//       defined(__OpenBSD__)    || \
+//       defined(__NetBSD__)
+// # include "uv-bsd.h"
+// #endif
 
 #ifndef NI_MAXHOST
 # define NI_MAXHOST 1025

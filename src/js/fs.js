@@ -28,7 +28,6 @@
 var util = require('util');
 var pathModule = require('path');
 
-// TODO-CODIUS: Create native fs binding for synchronous I/O
 var binding = process.binding('fs');
 var constants = process.binding('constants');
 var fs = exports;
@@ -182,7 +181,6 @@ fs.Stats.prototype.isSocket = function() {
 };
 
 fs.exists = function(path, callback) {
-  return callback(new Error('TODO-CODIUS: Not implemented!'));
   if (!nullCheck(path, cb)) return;
   binding.stat(pathModule._makeLong(path), cb);
   function cb(err, stats) {
@@ -202,7 +200,6 @@ fs.existsSync = function(path) {
 
 fs.readFile = function(path, options, callback_) {
   var callback = maybeCallback(arguments[arguments.length - 1]);
-  return callback(new Error('TODO-CODIUS: Not implemented!'));
 
   if (util.isFunction(options) || !options) {
     options = { encoding: null, flag: 'r' };
@@ -424,7 +421,6 @@ Object.defineProperty(exports, '_stringToFlags', {
 // list to make the arguments clear.
 
 fs.close = function(fd, callback) {
-  return callback(new Error('TODO-CODIUS: Not implemented!'));
   binding.close(fd, makeCallback(callback));
 };
 
@@ -444,7 +440,6 @@ function modeNum(m, def) {
 
 fs.open = function(path, flags, mode, callback) {
   callback = makeCallback(arguments[arguments.length - 1]);
-  return callback(new Error('TODO-CODIUS: Not implemented!'));
   mode = modeNum(mode, 438 /*=0666*/);
 
   if (!nullCheck(path, callback)) return;
@@ -486,7 +481,6 @@ fs.read = function(fd, buffer, offset, length, position, callback) {
     // Retain a reference to buffer so that it can't be GC'ed too soon.
     callback && callback(err, bytesRead || 0, buffer);
   }
-  return callback(new Error('TODO-CODIUS: Not implemented!'));
 
   binding.read(fd, buffer, offset, length, position, wrapper);
 };
@@ -528,7 +522,6 @@ fs.write = function(fd, buffer, offset, length, position, callback) {
       position = null;
     }
     callback = maybeCallback(callback);
-    return callback(new Error('TODO-CODIUS: Not implemented!'));
     var wrapper = function(err, written) {
       // Retain a reference to buffer so that it can't be GC'ed too soon.
       callback(err, written || 0, buffer);
@@ -548,7 +541,6 @@ fs.write = function(fd, buffer, offset, length, position, callback) {
     length = 'utf8';
   }
   callback = maybeCallback(position);
-  return callback(new Error('TODO-CODIUS: Not implemented!'));
   position = function(err, written) {
     // retain reference to string in case it's external
     callback(err, written || 0, buffer);
@@ -697,7 +689,6 @@ fs.mkdirSync = function(path, mode) {
 
 fs.readdir = function(path, callback) {
   callback = makeCallback(callback);
-  return callback(new Error('TODO-CODIUS: Not implemented!'));
   if (!nullCheck(path, callback)) return;
   binding.readdir(pathModule._makeLong(path), callback);
 };
@@ -708,20 +699,17 @@ fs.readdirSync = function(path) {
 };
 
 fs.fstat = function(fd, callback) {
-  return callback(new Error('TODO-CODIUS: Not implemented!'));
   binding.fstat(fd, makeCallback(callback));
 };
 
 fs.lstat = function(path, callback) {
   callback = makeCallback(callback);
-  return callback(new Error('TODO-CODIUS: Not implemented!'));
   if (!nullCheck(path, callback)) return;
   binding.lstat(pathModule._makeLong(path), callback);
 };
 
 fs.stat = function(path, callback) {
   callback = makeCallback(callback);
-  return callback(new Error('TODO-CODIUS: Not implemented!'));
   if (!nullCheck(path, callback)) return;
   binding.stat(pathModule._makeLong(path), callback);
 };

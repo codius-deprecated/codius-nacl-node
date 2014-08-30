@@ -1,10 +1,11 @@
 #ifndef SRC_EVENT_LOOP_H_
 #define SRC_EVENT_LOOP_H_
 
-#include "queue.h"
-#include "util.h"
-#include "util-inl.h"
-#include "heap-inl.h"
+#include "uv.h"
+#include "../src/queue.h"
+#include "../src/heap-inl.h"
+#include "../../../src/cpp/util.h"
+#include "../../../src/cpp/util-inl.h"
 
 #include <climits>
 #include <poll.h>
@@ -216,36 +217,29 @@ public:
     friend class EventLoop;
   };
 
-  enum IoEventType {
-    ioEventIn  = POLLIN,
-    ioEventOut = POLLOUT,
-    ioEventErr = POLLERR,
-    ioEventHup = POLLHUP
-  };
+  // class IoWatcher {
+  // public:
+  //   typedef void (*IoCallback)(EventLoop* loop,
+  //                             IoWatcher* watcher,
+  //                             unsigned int events);
+  //   void Init(IoCallback cb, int fd);
 
-  class IoWatcher {
-  public:
-    typedef void (*IoCallback)(EventLoop* loop,
-                               IoWatcher* watcher,
-                               unsigned int events);
-    void Init(IoCallback cb, int fd);
+  //   void Start(EventLoop* loop, unsigned int events);
+  //   void Stop(EventLoop* loop, unsigned int events);
 
-    void Start(EventLoop* loop, unsigned int events);
-    void Stop(EventLoop* loop, unsigned int events);
+  //   inline bool IsActive(unsigned events) {
+  //     assert(0 == (events & ~(ioEventIn | ioEventOut)));
+  //     assert(0 != events);
+  //     return 0 != (pevents_ & events);
+  //   }
 
-    inline bool IsActive(unsigned events) {
-      assert(0 == (events & ~(ioEventIn | ioEventOut)));
-      assert(0 != events);
-      return 0 != (pevents_ & events);
-    }
-
-  private:
-    int fd_;
-    IoCallback cb_;
-    QUEUE watcher_queue_;
-    friend class EventLoop;
-    unsigned int pevents_;
-  };
+  // private:
+  //   int fd_;
+  //   IoCallback cb_;
+  //   QUEUE watcher_queue_;
+  //   friend class EventLoop;
+  //   unsigned int pevents_;
+  // };
 
   class PipeHandle : public Handle {
   public:
@@ -253,18 +247,14 @@ public:
                                  ssize_t nread,
                                  const Buffer* buf);
 
-    static void OnIo(EventLoop* loop,
-                     IoWatcher* watcher,
+    static void OnIo(uv_loop_t* loop,
+                     uv__io_t* watcher,
                      unsigned int events);
 
-    inline void Init(EventLoop* loop, bool ipc) {
-      Handle::Init(loop, handleTypePipe);
-
-      watcher_.Init(OnIo, -1);
-    }
+    void Init(EventLoop* loop, bool ipc);
 
     inline void Open(int fd) {
-      watcher_.fd_ = fd;
+      watcher_.fd = fd;
 
       // TODO-CODIUS: Determine readable/writable flags
     }
@@ -277,17 +267,12 @@ public:
     void Eof(Buffer* buf);
 
     inline int GetFileDescriptor() const {
-      return watcher_.fd_;
+      return watcher_.fd;
     }
 
-    inline void Destroy() {
-      QUEUE* q;
-
-      assert(!watcher_.IsActive(ioEventIn | ioEventOut));
-      assert(flags_ & fClosed);
-    }
+    inline void Destroy();
   private:
-    IoWatcher watcher_;
+    uv__io_t watcher_;
 
     AllocCallback alloc_cb_;
     ReadCallback read_cb_;
@@ -295,46 +280,12 @@ public:
     friend class EventLoop;
   };
 
-  static unsigned int NextPowerOfTwo(unsigned int val) {
-    val -= 1;
-    val |= val >> 1;
-    val |= val >> 2;
-    val |= val >> 4;
-    val |= val >> 8;
-    val |= val >> 16;
-    val += 1;
-    return val;
-  }
-
-  inline void MaybeResize(unsigned int len) {
-    IoWatcher** watchers;
-    unsigned int nwatchers;
-    unsigned int i;
-
-    if (len <= nwatchers_)
-      return;
-
-    nwatchers = NextPowerOfTwo(len + 2) - 2;
-    watchers = static_cast<IoWatcher**>(
-      realloc(static_cast<void*>(watchers_),
-              (nwatchers + 2) * sizeof(watchers_[0])));
-
-    if (watchers == NULL)
-      abort();
-    for (i = nwatchers_; i < nwatchers; i++)
-      watchers[i] = NULL;
-
-    watchers_ = watchers;
-    nwatchers_ = nwatchers;
-  }
-
   inline bool HasActiveHandles() const {
-    return active_handles_ > 1;
+    return active_handles_ > 0;
   }
 
   inline bool HasActiveRequests() const {
-    //return (QUEUE_EMPTY(&(loop)->active_reqs) == 0)
-    return false;
+    return (QUEUE_EMPTY(&loop_.active_reqs) == 0);
   }
 
   inline bool IsAlive() const {
@@ -351,6 +302,10 @@ public:
 
   inline uint64_t Now() const {
     return time_;
+  }
+  
+  inline uv_loop_t *loop() {
+    return &loop_;
   }
 
   inline void RunTimers() {
@@ -492,6 +447,8 @@ private:
 
   void Init();
 
+  uv_loop_t loop_;
+
   unsigned int active_handles_;
   QUEUE loop_watcher_handles_[MAX_LOOP_WATCHER_HANDLE_TYPE + 1];
   QUEUE handle_queue_;
@@ -500,10 +457,6 @@ private:
   struct heap timer_heap_;
   unsigned int stop_flag_;
   Handle* closing_handles_;
-  unsigned int nfds_;
-  QUEUE watcher_queue_;
-  unsigned int nwatchers_;
-  IoWatcher** watchers_;
 
   // Singleton. Don't allow copies.
   EventLoop(EventLoop const&);      // Do not implement

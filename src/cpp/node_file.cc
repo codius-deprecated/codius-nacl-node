@@ -21,6 +21,7 @@
 
 #include "node.h"
 #include "node_file.h"
+#include "node_async.h"
 #include "node_buffer.h"
 #include "node_internals.h"
 
@@ -88,12 +89,17 @@ static inline bool IsInt64(double x) {
                                                   env->isolate(),             \
                                                   "result"))->Int32Value()
 
+struct codius_rpc_header {
+  unsigned long magic_bytes;
+  unsigned long callback_id;
+  unsigned long size;
+};
+
 static int Sync_Call(Environment* env, const char* func, 
                      const FunctionCallbackInfo<Value>& args,
                      Handle<Object>* response) {
   // If you hit this assertion, you forgot to enter the v8::Context first.
   assert(env->context() == env->isolate()->GetCurrentContext());
-  const char newline = '\n';
   size_t bytes_read;
   const int sync_fd = 4;
   Local<Object> message = Object::New(env->isolate());
@@ -137,25 +143,30 @@ static int Sync_Call(Environment* env, const char* func,
     TYPE_ERROR("error converting json to string");
     return -1;
   }
+
+  const unsigned long codius_magic_bytes = 0xC0D105FE;
+  codius_rpc_header rpc_header;
+  rpc_header.magic_bytes = codius_magic_bytes;
+  rpc_header.callback_id = 0;
+  rpc_header.size = message_v.length();
   
-  if (-1==write(sync_fd, *message_v, strlen(*message_v)) ||
-      -1==write(sync_fd, &newline, 1)) {
+  if (-1==write(sync_fd, &rpc_header, sizeof(rpc_header)) ||
+      -1==write(sync_fd, *message_v, strlen(*message_v))) {
     perror("write()");
-    TYPE_ERROR("Error writing to sync_fd 4");
+    TYPE_ERROR("Error writing to sync fd 4");
     return -1;
   }
   
-  char resp_buf[1024];
-  Local<String> response_str = String::NewFromUtf8(env->isolate(), "");
-  do {
-    bytes_read = read(sync_fd, resp_buf, sizeof(resp_buf));
-    if (bytes_read==-1) {
-      TYPE_ERROR("Error reading from sync_fd 4");
-      return -1;
-    }
-    response_str = String::Concat (response_str, String::NewFromUtf8(
-      env->isolate(), resp_buf, String::kNormalString, bytes_read));
-  } while (bytes_read==sizeof(resp_buf) && resp_buf[bytes_read-1]!='\n');
+  bytes_read = read(sync_fd, &rpc_header, sizeof(rpc_header));
+  if (rpc_header.magic_bytes!=codius_magic_bytes) {
+    TYPE_ERROR("Error reading sync fd 4, invalid header");
+  }
+  
+  char resp_buf[rpc_header.size];
+  bytes_read = read (sync_fd, &resp_buf, sizeof(resp_buf));
+  Local<String> response_str = String::NewFromUtf8(env->isolate(), resp_buf, 
+                                                   String::kNormalString,
+                                                   sizeof(resp_buf));
   
   // Parse the response.
   Handle<Function> JSON_parse = Handle<Function>::Cast(JSON->Get(
@@ -191,6 +202,58 @@ static int Sync_Call(Environment* env, const char* func,
 
     return -1;
   }
+  
+  return 0;
+}
+
+static int Async_Call(Environment* env, const char* func,
+                      Handle<Function> callback,
+                      const FunctionCallbackInfo<Value>& args) {
+  // If you hit this assertion, you forgot to enter the v8::Context first.
+  assert(env->context() == env->isolate()->GetCurrentContext());
+  Local<Object> message = Object::New(env->isolate());
+  Handle<Array> params;
+  
+  // Use legacy string interface for read so buffer isn't passed in:
+  // (fd, length, position, encoding)
+  if (0==strcmp(func, "read")) {
+    params = Array::New(env->isolate(), 4);
+    params->Set(0, args[0]);
+    params->Set(1, args[3]);
+    params->Set(2, args[4]);
+    params->Set(3, String::NewFromUtf8(env->isolate(), "utf8"));
+  } else {
+    params = Array::New(env->isolate(), args.Length()-1);
+    for (int i=0; i<args.Length()-1; ++i) {
+      params->Set(i, args[i]);
+    }
+  }
+
+  message->Set(String::NewFromUtf8(env->isolate(), "type"),
+               String::NewFromUtf8(env->isolate(), "api"));
+  message->Set(String::NewFromUtf8(env->isolate(), "api"),
+               String::NewFromUtf8(env->isolate(), "fs"));
+  message->Set(String::NewFromUtf8(env->isolate(), "method"),
+               String::NewFromUtf8(env->isolate(), func));
+  message->Set(String::NewFromUtf8(env->isolate(), "data"),
+               params);
+
+  // Stringify the JSON message.
+  Local<Object> global = env->context()->Global();
+  Handle<Object> JSON = global->Get(String::NewFromUtf8(
+                                      env->isolate(), "JSON"))->ToObject();
+  Handle<Function> JSON_stringify = Handle<Function>::Cast(JSON->Get(
+                                      String::NewFromUtf8(env->isolate(),
+                                                          "stringify")));
+  Local<Value> stringify_args[] = { message };
+  Local<Value> message_json = JSON_stringify->Call(JSON, 1, stringify_args);
+  node::Utf8Value message_v(message_json);
+  if (!message_v.length()) {
+    TYPE_ERROR("error converting json to string");
+    return -1;
+  }
+  
+  Async::PostMessage(env, *message_v, message_v.length(), callback);
   
   return 0;
 }
@@ -256,8 +319,7 @@ static void Stat(const FunctionCallbackInfo<Value>& args) {
   node::Utf8Value path(args[0]);
   
   if (args[1]->IsFunction()) {
-    //ASYNC_CALL(stat, args[1], *path)
-    return TYPE_ERROR("TODO-CODIUS: Not implemented!");
+    Async_Call(env, "stat", Handle<Function>::Cast(args[1]), args);
   } else {
     Handle<Object> response;
     if (-1==Sync_Call(env, "stat", args, &response))
@@ -279,12 +341,16 @@ static void LStat(const FunctionCallbackInfo<Value>& args) {
   if (!args[0]->IsString())
     return TYPE_ERROR("path must be a string");
 
-  Handle<Object> response;
-  if (-1==Sync_Call(env, "lstat", args, &response))
-    return;
-  args.GetReturnValue().Set(
-    BuildStatsObject(env, 
-      response->Get(String::NewFromUtf8(env->isolate(), "result"))->ToObject()));
+  if (args[1]->IsFunction()) {
+    Async_Call(env, "lstat", Handle<Function>::Cast(args[1]), args);
+  } else {
+    Handle<Object> response;
+    if (-1==Sync_Call(env, "lstat", args, &response))
+      return;
+    args.GetReturnValue().Set(
+      BuildStatsObject(env, 
+        response->Get(String::NewFromUtf8(env->isolate(), "result"))->ToObject()));
+  }
 }
 
 static void FStat(const FunctionCallbackInfo<Value>& args) {
@@ -295,11 +361,15 @@ static void FStat(const FunctionCallbackInfo<Value>& args) {
     return THROW_BAD_ARGS;
   }
   
-  Handle<Object> response;
-  Sync_Call(env, "fstat", args, &response);
-  args.GetReturnValue().Set(
-    BuildStatsObject(env, 
-      response->Get(String::NewFromUtf8(env->isolate(), "result"))->ToObject()));
+  if (args[1]->IsFunction()) {
+    Async_Call(env, "fstat", Handle<Function>::Cast(args[1]), args);
+  } else {
+    Handle<Object> response;
+    Sync_Call(env, "fstat", args, &response);
+    args.GetReturnValue().Set(
+      BuildStatsObject(env, 
+        response->Get(String::NewFromUtf8(env->isolate(), "result"))->ToObject()));
+  }
 }
 
 //static void Symlink(const FunctionCallbackInfo<Value>& args) {
@@ -484,13 +554,17 @@ static void ReadDir(const FunctionCallbackInfo<Value>& args) {
   if (!args[0]->IsString())
     return TYPE_ERROR("path must be a string");
 
-  Handle<Object> response;
-  if (-1==Sync_Call(env, "readdir", args, &response))
-    return;
+  if (args[1]->IsFunction()) {
+    Async_Call(env, "readdir", Handle<Function>::Cast(args[1]), args);
+  } else {
+    Handle<Object> response;
+    if (-1==Sync_Call(env, "readdir", args, &response))
+      return;
+    
+    Local<Array> names = Handle<Array>::Cast(response->Get(String::NewFromUtf8(env->isolate(), "result")));
   
-  Local<Array> names = Handle<Array>::Cast(response->Get(String::NewFromUtf8(env->isolate(), "result")));
-
-  args.GetReturnValue().Set(names);
+    args.GetReturnValue().Set(names);
+  }
 }
 
 static void Open(const FunctionCallbackInfo<Value>& args) {
@@ -511,13 +585,17 @@ static void Open(const FunctionCallbackInfo<Value>& args) {
   if (!args[2]->IsInt32())
     return TYPE_ERROR("mode must be an int");
 
-  Handle<Object> response;
-  if (-1==Sync_Call(env, "open", args, &response)) {
-    args.GetReturnValue().Set(-1);
+  if (args[3]->IsFunction()) {
+    Async_Call(env, "open", Handle<Function>::Cast(args[3]), args);
   } else {
-    args.GetReturnValue().Set(response->Get(String::NewFromUtf8(
-                                              env->isolate(),
-                                              "result"))->Int32Value());
+    Handle<Object> response;
+    if (-1==Sync_Call(env, "open", args, &response)) {
+      args.GetReturnValue().Set(-1);
+    } else {
+      args.GetReturnValue().Set(response->Get(String::NewFromUtf8(
+                                                env->isolate(),
+                                                "result"))->Int32Value());
+    }
   }
 }
 
@@ -683,18 +761,22 @@ static void Read(const FunctionCallbackInfo<Value>& args) {
 
   buf = buffer_data + off;
 
-  Handle<Object> response;
-  Sync_Call(env, "read", args, &response);
-  
-  /* Legacy read returns [str, bytesRead] */
-  Handle<Array> results = Handle<Array>::Cast(response->Get(String::NewFromUtf8(env->isolate(), "result")));
-  
-  /* Copy the read str to buffer. */
-  String::Utf8Value data(results->Get(0)->ToString());
-  strcpy (buffer_data, *data);
-  
-  /* Return bytesRead */
-  args.GetReturnValue().Set(results->Get(1));
+  if (args[5]->IsFunction()) {
+    Async_Call(env, "read", Handle<Function>::Cast(args[5]), args);
+  } else {
+    Handle<Object> response;
+    Sync_Call(env, "read", args, &response);
+    
+    /* Legacy read returns [str, bytesRead] */
+    Handle<Array> results = Handle<Array>::Cast(response->Get(String::NewFromUtf8(env->isolate(), "result")));
+    
+    /* Copy the read str to buffer. */
+    String::Utf8Value data(results->Get(0)->ToString());
+    strcpy (buffer_data, *data);
+    
+    /* Return bytesRead */
+    args.GetReturnValue().Set(results->Get(1));
+  }
 }
 
 

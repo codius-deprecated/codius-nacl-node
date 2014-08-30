@@ -19,18 +19,31 @@
  * IN THE SOFTWARE.
  */
 
-/*
- * This file is private to libuv. It provides common functionality to both
- * Windows and Unix backends.
- */
+#ifndef UV_UNIX_INTERNAL_H_
+#define UV_UNIX_INTERNAL_H_
 
-#ifndef UV_THREADPOOL_H_
-#define UV_THREADPOOL_H_
+#ifndef UV__POLLIN
+# define UV__POLLIN   1
+#endif
 
-struct uv__work {
-  void (*done)(struct uv__work *w, int status, const char *buf, size_t buf_len);
-  struct uv_loop_s* loop;
-  void* wq[2];
-};
+#ifndef UV__POLLOUT
+# define UV__POLLOUT  2
+#endif
 
-#endif /* UV_THREADPOOL_H_ */
+#ifndef UV__POLLERR
+# define UV__POLLERR  4
+#endif
+
+#ifndef UV__POLLHUP
+# define UV__POLLHUP  8
+#endif
+
+void uv__io_init(uv__io_t* w, uv__io_cb cb, int fd);
+void uv__io_start(uv_loop_t* loop, uv__io_t* w, unsigned int events);
+void uv__io_stop(uv_loop_t* loop, uv__io_t* w, unsigned int events);
+void uv__io_close(uv_loop_t* loop, uv__io_t* w);
+void uv__io_feed(uv_loop_t* loop, uv__io_t* w);
+int uv__io_active(const uv__io_t* w, unsigned int events);
+void uv__io_poll(uv_loop_t* loop, int timeout); /* in milliseconds or -1 */
+
+#endif /* UV_UNIX_INTERNAL_H_ */
