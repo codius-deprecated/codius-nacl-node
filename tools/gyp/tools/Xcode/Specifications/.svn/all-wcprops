@@ -1,0 +1,17 @@
+K 25
+svn:wc:ra_dav:version-url
+V 69
+/joyent/node/!svn/ver/4500/trunk/tools/gyp/tools/Xcode/Specifications
+END
+gyp.xclangspec
+K 25
+svn:wc:ra_dav:version-url
+V 84
+/joyent/node/!svn/ver/4500/trunk/tools/gyp/tools/Xcode/Specifications/gyp.xclangspec
+END
+gyp.pbfilespec
+K 25
+svn:wc:ra_dav:version-url
+V 84
+/joyent/node/!svn/ver/4500/trunk/tools/gyp/tools/Xcode/Specifications/gyp.pbfilespec
+END

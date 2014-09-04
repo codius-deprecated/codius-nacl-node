@@ -1,0 +1,149 @@
+K 25
+svn:wc:ra_dav:version-url
+V 53
+/joyent/node/!svn/ver/15577/trunk/tools/gyp/pylib/gyp
+END
+xml_fix.py
+K 25
+svn:wc:ra_dav:version-url
+V 63
+/joyent/node/!svn/ver/8525/trunk/tools/gyp/pylib/gyp/xml_fix.py
+END
+MSVSSettings_test.py
+K 25
+svn:wc:ra_dav:version-url
+V 73
+/joyent/node/!svn/ver/8525/trunk/tools/gyp/pylib/gyp/MSVSSettings_test.py
+END
+MSVSSettings.py
+K 25
+svn:wc:ra_dav:version-url
+V 69
+/joyent/node/!svn/ver/15411/trunk/tools/gyp/pylib/gyp/MSVSSettings.py
+END
+MSVSProject.py
+K 25
+svn:wc:ra_dav:version-url
+V 67
+/joyent/node/!svn/ver/8525/trunk/tools/gyp/pylib/gyp/MSVSProject.py
+END
+xcode_emulation.py
+K 25
+svn:wc:ra_dav:version-url
+V 72
+/joyent/node/!svn/ver/15482/trunk/tools/gyp/pylib/gyp/xcode_emulation.py
+END
+easy_xml_test.py
+K 25
+svn:wc:ra_dav:version-url
+V 69
+/joyent/node/!svn/ver/9071/trunk/tools/gyp/pylib/gyp/easy_xml_test.py
+END
+easy_xml.py
+K 25
+svn:wc:ra_dav:version-url
+V 64
+/joyent/node/!svn/ver/9071/trunk/tools/gyp/pylib/gyp/easy_xml.py
+END
+MSVSUtil.py
+K 25
+svn:wc:ra_dav:version-url
+V 65
+/joyent/node/!svn/ver/14912/trunk/tools/gyp/pylib/gyp/MSVSUtil.py
+END
+MSVSToolFile.py
+K 25
+svn:wc:ra_dav:version-url
+V 68
+/joyent/node/!svn/ver/8525/trunk/tools/gyp/pylib/gyp/MSVSToolFile.py
+END
+common_test.py
+K 25
+svn:wc:ra_dav:version-url
+V 68
+/joyent/node/!svn/ver/13183/trunk/tools/gyp/pylib/gyp/common_test.py
+END
+MSVSUserFile.py
+K 25
+svn:wc:ra_dav:version-url
+V 68
+/joyent/node/!svn/ver/8525/trunk/tools/gyp/pylib/gyp/MSVSUserFile.py
+END
+ordered_dict.py
+K 25
+svn:wc:ra_dav:version-url
+V 69
+/joyent/node/!svn/ver/15576/trunk/tools/gyp/pylib/gyp/ordered_dict.py
+END
+common.py
+K 25
+svn:wc:ra_dav:version-url
+V 63
+/joyent/node/!svn/ver/15482/trunk/tools/gyp/pylib/gyp/common.py
+END
+win_tool.py
+K 25
+svn:wc:ra_dav:version-url
+V 65
+/joyent/node/!svn/ver/15576/trunk/tools/gyp/pylib/gyp/win_tool.py
+END
+flock_tool.py
+K 25
+svn:wc:ra_dav:version-url
+V 67
+/joyent/node/!svn/ver/14912/trunk/tools/gyp/pylib/gyp/flock_tool.py
+END
+xcodeproj_file.py
+K 25
+svn:wc:ra_dav:version-url
+V 71
+/joyent/node/!svn/ver/14912/trunk/tools/gyp/pylib/gyp/xcodeproj_file.py
+END
+mac_tool.py
+K 25
+svn:wc:ra_dav:version-url
+V 65
+/joyent/node/!svn/ver/15577/trunk/tools/gyp/pylib/gyp/mac_tool.py
+END
+input_test.py
+K 25
+svn:wc:ra_dav:version-url
+V 67
+/joyent/node/!svn/ver/14912/trunk/tools/gyp/pylib/gyp/input_test.py
+END
+MSVSVersion.py
+K 25
+svn:wc:ra_dav:version-url
+V 68
+/joyent/node/!svn/ver/15576/trunk/tools/gyp/pylib/gyp/MSVSVersion.py
+END
+input.py
+K 25
+svn:wc:ra_dav:version-url
+V 62
+/joyent/node/!svn/ver/15482/trunk/tools/gyp/pylib/gyp/input.py
+END
+__init__.py
+K 25
+svn:wc:ra_dav:version-url
+V 65
+/joyent/node/!svn/ver/14912/trunk/tools/gyp/pylib/gyp/__init__.py
+END
+MSVSNew.py
+K 25
+svn:wc:ra_dav:version-url
+V 64
+/joyent/node/!svn/ver/14912/trunk/tools/gyp/pylib/gyp/MSVSNew.py
+END
+msvs_emulation.py
+K 25
+svn:wc:ra_dav:version-url
+V 71
+/joyent/node/!svn/ver/15576/trunk/tools/gyp/pylib/gyp/msvs_emulation.py
+END
+ninja_syntax.py
+K 25
+svn:wc:ra_dav:version-url
+V 69
+/joyent/node/!svn/ver/14912/trunk/tools/gyp/pylib/gyp/ninja_syntax.py
+END

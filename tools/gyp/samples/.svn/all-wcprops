@@ -1,0 +1,17 @@
+K 25
+svn:wc:ra_dav:version-url
+V 50
+/joyent/node/!svn/ver/4500/trunk/tools/gyp/samples
+END
+samples.bat
+K 25
+svn:wc:ra_dav:version-url
+V 62
+/joyent/node/!svn/ver/4500/trunk/tools/gyp/samples/samples.bat
+END
+samples
+K 25
+svn:wc:ra_dav:version-url
+V 58
+/joyent/node/!svn/ver/4500/trunk/tools/gyp/samples/samples
+END

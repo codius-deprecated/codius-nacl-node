@@ -1,0 +1,89 @@
+K 25
+svn:wc:ra_dav:version-url
+V 63
+/joyent/node/!svn/ver/15576/trunk/tools/gyp/pylib/gyp/generator
+END
+ninja_test.py
+K 25
+svn:wc:ra_dav:version-url
+V 77
+/joyent/node/!svn/ver/14912/trunk/tools/gyp/pylib/gyp/generator/ninja_test.py
+END
+__init__.py
+K 25
+svn:wc:ra_dav:version-url
+V 74
+/joyent/node/!svn/ver/4500/trunk/tools/gyp/pylib/gyp/generator/__init__.py
+END
+ninja.py
+K 25
+svn:wc:ra_dav:version-url
+V 72
+/joyent/node/!svn/ver/15576/trunk/tools/gyp/pylib/gyp/generator/ninja.py
+END
+android.py
+K 25
+svn:wc:ra_dav:version-url
+V 74
+/joyent/node/!svn/ver/15482/trunk/tools/gyp/pylib/gyp/generator/android.py
+END
+cmake.py
+K 25
+svn:wc:ra_dav:version-url
+V 72
+/joyent/node/!svn/ver/15482/trunk/tools/gyp/pylib/gyp/generator/cmake.py
+END
+xcode_test.py
+K 25
+svn:wc:ra_dav:version-url
+V 77
+/joyent/node/!svn/ver/14912/trunk/tools/gyp/pylib/gyp/generator/xcode_test.py
+END
+xcode.py
+K 25
+svn:wc:ra_dav:version-url
+V 72
+/joyent/node/!svn/ver/14912/trunk/tools/gyp/pylib/gyp/generator/xcode.py
+END
+gypd.py
+K 25
+svn:wc:ra_dav:version-url
+V 70
+/joyent/node/!svn/ver/8525/trunk/tools/gyp/pylib/gyp/generator/gypd.py
+END
+eclipse.py
+K 25
+svn:wc:ra_dav:version-url
+V 74
+/joyent/node/!svn/ver/15482/trunk/tools/gyp/pylib/gyp/generator/eclipse.py
+END
+msvs_test.py
+K 25
+svn:wc:ra_dav:version-url
+V 76
+/joyent/node/!svn/ver/13020/trunk/tools/gyp/pylib/gyp/generator/msvs_test.py
+END
+msvs.py
+K 25
+svn:wc:ra_dav:version-url
+V 71
+/joyent/node/!svn/ver/15576/trunk/tools/gyp/pylib/gyp/generator/msvs.py
+END
+gypsh.py
+K 25
+svn:wc:ra_dav:version-url
+V 71
+/joyent/node/!svn/ver/8525/trunk/tools/gyp/pylib/gyp/generator/gypsh.py
+END
+dump_dependency_json.py
+K 25
+svn:wc:ra_dav:version-url
+V 87
+/joyent/node/!svn/ver/14912/trunk/tools/gyp/pylib/gyp/generator/dump_dependency_json.py
+END
+make.py
+K 25
+svn:wc:ra_dav:version-url
+V 71
+/joyent/node/!svn/ver/15576/trunk/tools/gyp/pylib/gyp/generator/make.py
+END

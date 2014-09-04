@@ -1,0 +1,29 @@
+K 25
+svn:wc:ra_dav:version-url
+V 55
+/joyent/node/!svn/ver/14912/trunk/tools/gyp/tools/emacs
+END
+run-unit-tests.sh
+K 25
+svn:wc:ra_dav:version-url
+V 72
+/joyent/node/!svn/ver/9071/trunk/tools/gyp/tools/emacs/run-unit-tests.sh
+END
+README
+K 25
+svn:wc:ra_dav:version-url
+V 61
+/joyent/node/!svn/ver/9071/trunk/tools/gyp/tools/emacs/README
+END
+gyp-tests.el
+K 25
+svn:wc:ra_dav:version-url
+V 68
+/joyent/node/!svn/ver/13183/trunk/tools/gyp/tools/emacs/gyp-tests.el
+END
+gyp.el
+K 25
+svn:wc:ra_dav:version-url
+V 62
+/joyent/node/!svn/ver/14912/trunk/tools/gyp/tools/emacs/gyp.el
+END

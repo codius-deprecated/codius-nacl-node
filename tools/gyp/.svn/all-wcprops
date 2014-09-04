@@ -1,0 +1,89 @@
+K 25
+svn:wc:ra_dav:version-url
+V 43
+/joyent/node/!svn/ver/15577/trunk/tools/gyp
+END
+LICENSE
+K 25
+svn:wc:ra_dav:version-url
+V 50
+/joyent/node/!svn/ver/4500/trunk/tools/gyp/LICENSE
+END
+gyp.bat
+K 25
+svn:wc:ra_dav:version-url
+V 51
+/joyent/node/!svn/ver/14912/trunk/tools/gyp/gyp.bat
+END
+pylintrc
+K 25
+svn:wc:ra_dav:version-url
+V 51
+/joyent/node/!svn/ver/8525/trunk/tools/gyp/pylintrc
+END
+.gitignore
+K 25
+svn:wc:ra_dav:version-url
+V 53
+/joyent/node/!svn/ver/4500/trunk/tools/gyp/.gitignore
+END
+AUTHORS
+K 25
+svn:wc:ra_dav:version-url
+V 51
+/joyent/node/!svn/ver/15576/trunk/tools/gyp/AUTHORS
+END
+gyptest.py
+K 25
+svn:wc:ra_dav:version-url
+V 54
+/joyent/node/!svn/ver/15411/trunk/tools/gyp/gyptest.py
+END
+setup.py
+K 25
+svn:wc:ra_dav:version-url
+V 52
+/joyent/node/!svn/ver/14912/trunk/tools/gyp/setup.py
+END
+gyp_main.py
+K 25
+svn:wc:ra_dav:version-url
+V 55
+/joyent/node/!svn/ver/14912/trunk/tools/gyp/gyp_main.py
+END
+DEPS
+K 25
+svn:wc:ra_dav:version-url
+V 48
+/joyent/node/!svn/ver/14912/trunk/tools/gyp/DEPS
+END
+codereview.settings
+K 25
+svn:wc:ra_dav:version-url
+V 62
+/joyent/node/!svn/ver/4500/trunk/tools/gyp/codereview.settings
+END
+gyp_dummy.c
+K 25
+svn:wc:ra_dav:version-url
+V 54
+/joyent/node/!svn/ver/4500/trunk/tools/gyp/gyp_dummy.c
+END
+OWNERS
+K 25
+svn:wc:ra_dav:version-url
+V 49
+/joyent/node/!svn/ver/4500/trunk/tools/gyp/OWNERS
+END
+gyp
+K 25
+svn:wc:ra_dav:version-url
+V 47
+/joyent/node/!svn/ver/15411/trunk/tools/gyp/gyp
+END
+PRESUBMIT.py
+K 25
+svn:wc:ra_dav:version-url
+V 56
+/joyent/node/!svn/ver/15411/trunk/tools/gyp/PRESUBMIT.py
+END
