@@ -118,7 +118,7 @@ void PostMessage(Environment* env, const char *data, size_t data_length, Handle<
   uv_work_t* req = new uv_work_t();
   req->data = request;
 
-  uv_queue_work(env->event_loop()->loop(), req, data, data_length, AsyncAfter);
+  uv_queue_work(env->event_loop(), req, data, data_length, AsyncAfter);
 }
 
 static void PostMessage(const FunctionCallbackInfo<Value>& args) {

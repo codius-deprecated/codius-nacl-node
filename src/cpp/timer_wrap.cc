@@ -87,9 +87,10 @@ class TimerWrap : public HandleWrap {
   TimerWrap(Environment* env, Handle<Object> object)
       : HandleWrap(env,
                    object,
-                   reinterpret_cast<EventLoop::Handle*>(&handle_),
+                   reinterpret_cast<uv_handle_t*>(&handle_),
                    AsyncWrap::PROVIDER_TIMERWRAP) {
-    handle_.Init(env->event_loop());
+    int r = uv_timer_init(env->event_loop(), &handle_);
+    assert(r == 0);
   }
 
   ~TimerWrap() {
@@ -102,7 +103,7 @@ class TimerWrap : public HandleWrap {
 
     int64_t timeout = args[0]->IntegerValue();
     int64_t repeat = args[1]->IntegerValue();
-    wrap->handle_.Start(OnTimeout, timeout, repeat);
+    int err = uv_timer_start(&wrap->handle_, OnTimeout, timeout, repeat);
     args.GetReturnValue().Set(0);
   }
 
@@ -111,7 +112,7 @@ class TimerWrap : public HandleWrap {
     HandleScope scope(env->isolate());
     TimerWrap* wrap = Unwrap<TimerWrap>(args.Holder());
 
-    wrap->handle_.Stop();
+    int err = uv_timer_stop(&wrap->handle_);
     args.GetReturnValue().Set(0);
   }
 
@@ -120,7 +121,7 @@ class TimerWrap : public HandleWrap {
     HandleScope scope(env->isolate());
     TimerWrap* wrap = Unwrap<TimerWrap>(args.Holder());
 
-    wrap->handle_.Again();
+    int err = uv_timer_again(&wrap->handle_);
     args.GetReturnValue().Set(0);
   }
 
@@ -130,7 +131,7 @@ class TimerWrap : public HandleWrap {
     TimerWrap* wrap = Unwrap<TimerWrap>(args.Holder());
 
     int64_t repeat = args[0]->IntegerValue();
-    wrap->handle_.SetRepeat(repeat);
+    uv_timer_set_repeat(&wrap->handle_, repeat);
     args.GetReturnValue().Set(0);
   }
 
@@ -139,11 +140,11 @@ class TimerWrap : public HandleWrap {
     HandleScope scope(env->isolate());
     TimerWrap* wrap = Unwrap<TimerWrap>(args.Holder());
 
-    int64_t repeat = wrap->handle_.GetRepeat();
+    int64_t repeat = uv_timer_get_repeat(&wrap->handle_);
     args.GetReturnValue().Set(static_cast<double>(repeat));
   }
 
-  static void OnTimeout(EventLoop::TimerHandle* handle) {
+  static void OnTimeout(uv_timer_t* handle) {
     TimerWrap* wrap = static_cast<TimerWrap*>(handle->data);
     Environment* env = wrap->env();
     HandleScope handle_scope(env->isolate());
@@ -154,12 +155,12 @@ class TimerWrap : public HandleWrap {
   static void Now(const FunctionCallbackInfo<Value>& args) {
     HandleScope handle_scope(args.GetIsolate());
     Environment* env = Environment::GetCurrent(args.GetIsolate());
-    env->event_loop()->UpdateTime();
-    double now = static_cast<double>(env->event_loop()->Now());
+    uv_update_time(env->event_loop());
+    double now = static_cast<double>(uv_now(env->event_loop()));
     args.GetReturnValue().Set(now);
   }
 
-  EventLoop::TimerHandle handle_;
+  uv_timer_t handle_;
 };
 
 

@@ -77,18 +77,18 @@
 static void uv__run_pending(uv_loop_t* loop);
 
 /* Verify that uv_buf_t is ABI-compatible with struct iovec. */
-STATIC_ASSERT(sizeof(uv_buf_t) == sizeof(struct iovec));
-STATIC_ASSERT(sizeof(&((uv_buf_t*) 0)->base) ==
-              sizeof(((struct iovec*) 0)->iov_base));
-STATIC_ASSERT(sizeof(&((uv_buf_t*) 0)->len) ==
-              sizeof(((struct iovec*) 0)->iov_len));
-STATIC_ASSERT(offsetof(uv_buf_t, base) == offsetof(struct iovec, iov_base));
-STATIC_ASSERT(offsetof(uv_buf_t, len) == offsetof(struct iovec, iov_len));
+// STATIC_ASSERT(sizeof(uv_buf_t) == sizeof(struct iovec));
+// STATIC_ASSERT(sizeof(&((uv_buf_t*) 0)->base) ==
+//               sizeof(((struct iovec*) 0)->iov_base));
+// STATIC_ASSERT(sizeof(&((uv_buf_t*) 0)->len) ==
+//               sizeof(((struct iovec*) 0)->iov_len));
+// STATIC_ASSERT(offsetof(uv_buf_t, base) == offsetof(struct iovec, iov_base));
+// STATIC_ASSERT(offsetof(uv_buf_t, len) == offsetof(struct iovec, iov_len));
 
 
-uint64_t uv_hrtime(void) {
-  return uv__hrtime(UV_CLOCK_PRECISE);
-}
+// uint64_t uv_hrtime(void) {
+//   return uv__hrtime(UV_CLOCK_PRECISE);
+// }
 
 
 void uv_close(uv_handle_t* handle, uv_close_cb close_cb) {
@@ -106,55 +106,55 @@ void uv_close(uv_handle_t* handle, uv_close_cb close_cb) {
     uv__stream_close((uv_stream_t*)handle);
     break;
 
-  case UV_TCP:
-    uv__tcp_close((uv_tcp_t*)handle);
-    break;
+  // case UV_TCP:
+  //   uv__tcp_close((uv_tcp_t*)handle);
+  //   break;
 
-  case UV_UDP:
-    uv__udp_close((uv_udp_t*)handle);
-    break;
+  // case UV_UDP:
+  //   uv__udp_close((uv_udp_t*)handle);
+  //   break;
 
-  case UV_PREPARE:
-    uv__prepare_close((uv_prepare_t*)handle);
-    break;
+  // case UV_PREPARE:
+  //   uv__prepare_close((uv_prepare_t*)handle);
+  //   break;
 
-  case UV_CHECK:
-    uv__check_close((uv_check_t*)handle);
-    break;
+  // case UV_CHECK:
+  //   uv__check_close((uv_check_t*)handle);
+  //   break;
 
-  case UV_IDLE:
-    uv__idle_close((uv_idle_t*)handle);
-    break;
+  // case UV_IDLE:
+  //   uv__idle_close((uv_idle_t*)handle);
+  //   break;
 
-  case UV_ASYNC:
-    uv__async_close((uv_async_t*)handle);
-    break;
+  // case UV_ASYNC:
+  //   uv__async_close((uv_async_t*)handle);
+  //   break;
 
-  case UV_TIMER:
-    uv__timer_close((uv_timer_t*)handle);
-    break;
+  // case UV_TIMER:
+  //   uv__timer_close((uv_timer_t*)handle);
+  //   break;
 
-  case UV_PROCESS:
-    uv__process_close((uv_process_t*)handle);
-    break;
+  // case UV_PROCESS:
+  //   uv__process_close((uv_process_t*)handle);
+  //   break;
 
-  case UV_FS_EVENT:
-    uv__fs_event_close((uv_fs_event_t*)handle);
-    break;
+  // case UV_FS_EVENT:
+  //   uv__fs_event_close((uv_fs_event_t*)handle);
+  //   break;
 
-  case UV_POLL:
-    uv__poll_close((uv_poll_t*)handle);
-    break;
+  // case UV_POLL:
+  //   uv__poll_close((uv_poll_t*)handle);
+  //   break;
 
-  case UV_FS_POLL:
-    uv__fs_poll_close((uv_fs_poll_t*)handle);
-    break;
+  // case UV_FS_POLL:
+  //   uv__fs_poll_close((uv_fs_poll_t*)handle);
+  //   break;
 
-  case UV_SIGNAL:
-    uv__signal_close((uv_signal_t*) handle);
-    /* Signal handles may not be closed immediately. The signal code will */
-    /* itself close uv__make_close_pending whenever appropriate. */
-    return;
+  // case UV_SIGNAL:
+  //   uv__signal_close((uv_signal_t*) handle);
+  //   /* Signal handles may not be closed immediately. The signal code will */
+  //   /* itself close uv__make_close_pending whenever appropriate. */
+  //   return;
 
   default:
     assert(0);
@@ -198,13 +198,13 @@ static void uv__finish_close(uv_handle_t* handle) {
 
     case UV_NAMED_PIPE:
     case UV_TCP:
-    case UV_TTY:
-      uv__stream_destroy((uv_stream_t*)handle);
-      break;
+    // case UV_TTY:
+    //   uv__stream_destroy((uv_stream_t*)handle);
+    //   break;
 
-    case UV_UDP:
-      uv__udp_finish_close((uv_udp_t*)handle);
-      break;
+    // case UV_UDP:
+    //   uv__udp_finish_close((uv_udp_t*)handle);
+    //   break;
 
     default:
       assert(0);
@@ -287,18 +287,19 @@ int uv_run(uv_loop_t* loop, uv_run_mode mode) {
 
     uv__update_time(loop);
     uv__run_timers(loop);
-    uv__run_pending(loop);
-    uv__run_idle(loop);
-    uv__run_prepare(loop);
+    //uv__run_pending(loop);
+    //uv__run_idle(loop);      
+    //uv__run_prepare(loop);
 
     timeout = 0;
     if ((mode & UV_RUN_NOWAIT) == 0)
       timeout = uv_backend_timeout(loop);
 
     uv__io_poll(loop, timeout);
-    uv__run_check(loop);
+    
+    //uv__run_check(loop);
     uv__run_closing_handles(loop);
-
+    
     if (mode == UV_RUN_ONCE) {
       /* UV_RUN_ONCE implies forward progess: at least one callback must have
        * been invoked when it returns. uv__io_poll() can return without doing
@@ -681,7 +682,7 @@ static void maybe_resize(uv_loop_t* loop, unsigned int len) {
   }
 
   nwatchers = next_power_of_two(len + 2) - 2;
-  watchers = realloc(loop->watchers,
+  watchers = (uv__io_t**)realloc(loop->watchers,
                      (nwatchers + 2) * sizeof(loop->watchers[0]));
 
   if (watchers == NULL)
@@ -783,7 +784,8 @@ void uv__io_close(uv_loop_t* loop, uv__io_t* w) {
   QUEUE_REMOVE(&w->pending_queue);
 
   /* Remove stale events for this file descriptor */
-  uv__platform_invalidate_fd(loop, w->fd);
+  //TODO-CODIUS: Invalidate fds?
+  //uv__platform_invalidate_fd(loop, w->fd);
 }
 
 

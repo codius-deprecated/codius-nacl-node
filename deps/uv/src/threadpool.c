@@ -42,41 +42,43 @@ static QUEUE wq;
 static volatile int initialized;
 static unsigned long int unique_id = 0;
 
-struct callback_list {
-  RB_ENTRY(callback_list) entry;
+typedef struct callback_list_s callback_list_t;
+
+struct callback_list_s {
+  RB_ENTRY(callback_list_s) entry;
   struct uv__work* work;
   unsigned long int id;
 };
 
 struct callback_root {
-  struct callback_list* rbh_root;
+  callback_list_t* rbh_root;
 };
 #define CAST(p) ((struct callback_root*)(p))
 
 
-static int compare_callbacks(const struct callback_list* a,
-                            const struct callback_list* b) {
+static int compare_callbacks(const callback_list_t* a,
+                            const callback_list_t* b) {
   if (a->id < b->id) return -1;
   if (a->id > b->id) return 1;
   return 0;
 }
 
-RB_GENERATE_STATIC(callback_root, callback_list, entry, compare_callbacks)
+RB_GENERATE_STATIC(callback_root, callback_list_s, entry, compare_callbacks)
 
-static struct callback_list* find_callback(uv_loop_t* loop, int callback_id) {
-  struct callback_list w;
+static callback_list_t* find_callback(uv_loop_t* loop, int callback_id) {
+  callback_list_t w;
   w.id = callback_id;
   return RB_FIND(callback_root, CAST(&loop->async_callbacks), &w);
 }
 
-static void uv__req_init(uv_loop_t* loop,
-                         uv_req_t* req,
-                         uv_req_type type) {
-  req->type = type;
-  uv__req_register(loop, req);
-}
-#define uv__req_init(loop, req, type) \
-  uv__req_init((loop), (uv_req_t*)(req), (type))
+// static void uv__req_init(uv_loop_t* loop,
+//                          uv_req_t* req,
+//                          uv_req_type type) {
+//   req->type = type;
+//   uv__req_register(loop, req);
+// }
+// #define uv__req_init(loop, req, type) \
+//   uv__req_init((loop), (uv_req_t*)(req), (type))
 
 static void uv__cancelled(struct uv__work* w) {
   abort();
@@ -93,16 +95,14 @@ typedef struct codius_rpc_header_s
 
 static void uv__codius_async_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
   size_t bytes_read;
-  
   codius_rpc_header_t rpc_header;
   
   bytes_read = read(CODIUS_ASYNC_IO_FD, &rpc_header, 
                     sizeof(rpc_header));
-  fflush(stdout);
   char buf[rpc_header.size];
   bytes_read = read (CODIUS_ASYNC_IO_FD, &buf, sizeof(buf));
   
-  struct callback_list *cb_list;
+  callback_list_t *cb_list;
   if (bytes_read) {
     cb_list = find_callback(loop, rpc_header.callback_id);
     cb_list->work->done(cb_list->work, 0, buf, rpc_header.size);
@@ -166,14 +166,14 @@ void uv__work_submit(uv_loop_t* loop,
   w->loop = loop;
   w->done = done;
 
-  struct callback_list* c;
+  callback_list_t* c;
   
   if (unique_id == ULONG_MAX) {
     w->done(w, UV_ENOSPC, NULL, 0);
     return;
   }
   
-  c = (callback_list*)malloc(sizeof(*c));
+  c = (callback_list_t*)malloc(sizeof(*c));
   c->id = unique_id++;
   c->work = w;
   RB_INSERT(callback_root, CAST(&loop->async_callbacks), c);

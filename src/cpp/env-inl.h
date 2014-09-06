@@ -91,7 +91,8 @@ inline void Environment::IsolateData::Put() {
 }
 
 inline Environment::IsolateData::IsolateData(v8::Isolate* isolate)
-    : event_loop_(&EventLoop::GetLoop()),
+    //: event_loop_(&EventLoop::GetLoop()),
+    : event_loop_(uv_default_loop()),
       isolate_(isolate),
 #define V(PropertyName, StringValue)                                          \
     PropertyName ## _(isolate, FIXED_ONE_BYTE_STRING(isolate, StringValue)),
@@ -101,7 +102,7 @@ inline Environment::IsolateData::IsolateData(v8::Isolate* isolate)
   QUEUE_INIT(&gc_tracker_queue_);
 }
 
-inline EventLoop* Environment::IsolateData::event_loop() const {
+inline uv_loop_t* Environment::IsolateData::event_loop() const {
   return event_loop_;
 }
 
@@ -273,36 +274,36 @@ inline bool Environment::in_domain() const {
 }
 
 inline Environment* Environment::from_immediate_check_handle(
-    EventLoop::CheckHandle* handle) {
+    uv_check_t* handle) {
   return ContainerOf(&Environment::immediate_check_handle_, handle);
 }
 
-inline EventLoop::CheckHandle* Environment::immediate_check_handle() {
+inline uv_check_t* Environment::immediate_check_handle() {
   return &immediate_check_handle_;
 }
 
-inline EventLoop::IdleHandle* Environment::immediate_idle_handle() {
+inline uv_idle_t* Environment::immediate_idle_handle() {
   return &immediate_idle_handle_;
 }
 
 inline Environment* Environment::from_idle_prepare_handle(
-    EventLoop::PrepareHandle* handle) {
+    uv_prepare_t* handle) {
   return ContainerOf(&Environment::idle_prepare_handle_, handle);
 }
 
-inline EventLoop::PrepareHandle* Environment::idle_prepare_handle() {
+inline uv_prepare_t* Environment::idle_prepare_handle() {
   return &idle_prepare_handle_;
 }
 
-inline Environment* Environment::from_idle_check_handle(EventLoop::CheckHandle* handle) {
+inline Environment* Environment::from_idle_check_handle(uv_check_t* handle) {
   return ContainerOf(&Environment::idle_check_handle_, handle);
 }
 
-inline EventLoop::CheckHandle* Environment::idle_check_handle() {
+inline uv_check_t* Environment::idle_check_handle() {
   return &idle_check_handle_;
 }
 
-inline EventLoop* Environment::event_loop() const {
+inline uv_loop_t* Environment::event_loop() const {
   return isolate_data()->event_loop();
 }
 

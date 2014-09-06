@@ -71,6 +71,7 @@ using v8::Value;
 using v8::kExternalUnsignedIntArray;
 
 QUEUE handle_wrap_queue = { &handle_wrap_queue, &handle_wrap_queue };
+QUEUE req_wrap_queue = { &req_wrap_queue, &req_wrap_queue };
 
 static node_module* modpending;
 static node_module* modlist_builtin;
@@ -124,7 +125,7 @@ void ArrayBufferAllocator::Free(void* data, size_t length) {
 }
 
 
-static void CheckImmediate(EventLoop::CheckHandle* handle) {
+static void CheckImmediate(uv_check_t* handle) {
   Environment* env = Environment::from_immediate_check_handle(handle);
   HandleScope scope(env->isolate());
   Context::Scope context_scope(env->context());
@@ -132,7 +133,7 @@ static void CheckImmediate(EventLoop::CheckHandle* handle) {
 }
 
 
-static void IdleImmediateDummy(EventLoop::IdleHandle* handle) {
+static void IdleImmediateDummy(uv_idle_t* handle) {
   // Do nothing. Only for maintaining event loop.
   // TODO(bnoordhuis) Maybe make libuv accept NULL idle callbacks.
 }
@@ -1563,8 +1564,9 @@ void NeedImmediateCallbackGetter(Local<String> property,
                                  const PropertyCallbackInfo<Value>& info) {
   HandleScope handle_scope(info.GetIsolate());
   Environment* env = Environment::GetCurrent(info.GetIsolate());
-  const EventLoop::CheckHandle* immediate_check_handle = env->immediate_check_handle();
-  bool active = immediate_check_handle->IsActive();
+  const uv_check_t* immediate_check_handle = env->immediate_check_handle();
+  bool active = uv_is_active(
+      reinterpret_cast<const uv_handle_t*>(immediate_check_handle));
   info.GetReturnValue().Set(active);
 }
 
@@ -1576,21 +1578,22 @@ static void NeedImmediateCallbackSetter(
   HandleScope handle_scope(info.GetIsolate());
   Environment* env = Environment::GetCurrent(info.GetIsolate());
 
-  EventLoop::CheckHandle* immediate_check_handle = env->immediate_check_handle();
-  bool active = immediate_check_handle->IsActive();
+  uv_check_t* immediate_check_handle = env->immediate_check_handle();
+  bool active = uv_is_active(
+      reinterpret_cast<const uv_handle_t*>(immediate_check_handle));
 
   if (active == value->BooleanValue())
     return;
 
-  EventLoop::IdleHandle* immediate_idle_handle = env->immediate_idle_handle();
+  uv_idle_t* immediate_idle_handle = env->immediate_idle_handle();
 
   if (active) {
-    immediate_check_handle->Stop();
-    immediate_idle_handle->Stop();
+    uv_check_stop(immediate_check_handle);
+    uv_idle_stop(immediate_idle_handle);
   } else {
-    immediate_check_handle->Start(CheckImmediate);
+    uv_check_start(immediate_check_handle, CheckImmediate);
     // Idle handle is needed only to stop the event loop from blocking in poll.
-    immediate_idle_handle->Start(IdleImmediateDummy);
+    uv_idle_start(immediate_idle_handle, IdleImmediateDummy);
   }
 }
 
@@ -1746,15 +1749,15 @@ void SetupProcessObject(Environment* env,
   NODE_SET_METHOD(process, "umask", Umask);
 
 #if defined(__POSIX__) && !defined(__ANDROID__)
-  NODE_SET_METHOD(process, "getuid", GetUid);
-  NODE_SET_METHOD(process, "setuid", SetUid);
+  // NODE_SET_METHOD(process, "getuid", GetUid);
+  // NODE_SET_METHOD(process, "setuid", SetUid);
 
-  NODE_SET_METHOD(process, "setgid", SetGid);
-  NODE_SET_METHOD(process, "getgid", GetGid);
+  // NODE_SET_METHOD(process, "setgid", SetGid);
+  // NODE_SET_METHOD(process, "getgid", GetGid);
 
-  NODE_SET_METHOD(process, "getgroups", GetGroups);
-  NODE_SET_METHOD(process, "setgroups", SetGroups);
-  NODE_SET_METHOD(process, "initgroups", InitGroups);
+  // NODE_SET_METHOD(process, "getgroups", GetGroups);
+  // NODE_SET_METHOD(process, "setgroups", SetGroups);
+  // NODE_SET_METHOD(process, "initgroups", InitGroups);
 #endif  // __POSIX__ && !defined(__ANDROID__)
 
   NODE_SET_METHOD(process, "_kill", Kill);
@@ -2092,9 +2095,10 @@ Environment* CreateEnvironment(Isolate* isolate,
   Context::Scope context_scope(context);
   Environment* env = Environment::New(context);
 
-  env->immediate_check_handle()->Init(env->event_loop());
-  env->immediate_check_handle()->Unref();
-  env->immediate_idle_handle()->Init(env->event_loop());
+  uv_check_init(env->event_loop(), env->immediate_check_handle());
+  uv_unref(
+      reinterpret_cast<uv_handle_t*>(env->immediate_check_handle()));
+  uv_idle_init(env->event_loop(), env->immediate_idle_handle());
 
   Local<FunctionTemplate> process_template = FunctionTemplate::New(isolate);
   process_template->SetClassName(FIXED_ONE_BYTE_STRING(isolate, "process"));
@@ -2130,13 +2134,13 @@ int Start(int argc, char** argv) {
       Context::Scope context_scope(env->context());
       bool more;
       do {
-        more = env->event_loop()->Run(EventLoop::modeRunOnce);
+        more = uv_run(env->event_loop(), UV_RUN_ONCE);
         if (more == false) {
           EmitBeforeExit(env);
 
           // Emit `beforeExit` if the loop became alive either after emitting
           // event, or after running some callbacks.
-          more = env->event_loop()->IsAlive();
+          more = uv_loop_alive(env->event_loop());
           //if (uv_run(env->event_loop(), UV_RUN_NOWAIT) != 0)
           //  more = true;
         }

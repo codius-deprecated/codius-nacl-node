@@ -111,9 +111,6 @@ void TCPWrap::Initialize(Handle<Object> target,
                             StreamWrap::WriteAsciiString);
   NODE_SET_PROTOTYPE_METHOD(t, "writeUtf8String", StreamWrap::WriteUtf8String);
   NODE_SET_PROTOTYPE_METHOD(t, "writeUcs2String", StreamWrap::WriteUcs2String);
-  NODE_SET_PROTOTYPE_METHOD(t,
-                            "writeBinaryString",
-                            StreamWrap::WriteBinaryString);
   NODE_SET_PROTOTYPE_METHOD(t, "writev", StreamWrap::Writev);
 
   NODE_SET_PROTOTYPE_METHOD(t, "open", Open);
@@ -316,9 +313,12 @@ void TCPWrap::Listen(const FunctionCallbackInfo<Value>& args) {
   TCPWrap* wrap = Unwrap<TCPWrap>(args.Holder());
 
   int backlog = args[0]->Int32Value();
-  int err = uv_listen(reinterpret_cast<uv_stream_t*>(&wrap->handle_),
-                      backlog,
-                      OnConnection);
+  //TODO-CODIUS: Add listening for TCP.
+  // int err = uv_listen(reinterpret_cast<uv_stream_t*>(&wrap->handle_),
+  //                     backlog,
+  //                     OnConnection);
+  int err = 0;
+  
   args.GetReturnValue().Set(err);
 }
 

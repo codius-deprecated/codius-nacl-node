@@ -26,8 +26,8 @@
 #include "env-inl.h"
 #include "pipe_wrap.h"
 #include "tcp_wrap.h"
-#include "tty_wrap.h"
-#include "udp_wrap.h"
+// #include "tty_wrap.h"
+// #include "udp_wrap.h"
 #include "util.h"
 #include "util-inl.h"
 #include "uv.h"
@@ -35,15 +35,28 @@
 
 namespace node {
 
+// #define WITH_GENERIC_STREAM(env, obj, BODY)                                   \
+//     do {                                                                      \
+//       if (env->tcp_constructor_template().IsEmpty() == false &&               \
+//           env->tcp_constructor_template()->HasInstance(obj)) {                \
+//         TCPWrap* const wrap = Unwrap<TCPWrap>(obj);                           \
+//         BODY                                                                  \
+//       } else if (env->tty_constructor_template().IsEmpty() == false &&        \
+//                  env->tty_constructor_template()->HasInstance(obj)) {         \
+//         TTYWrap* const wrap = Unwrap<TTYWrap>(obj);                           \
+//         BODY                                                                  \
+//       } else if (env->pipe_constructor_template().IsEmpty() == false &&       \
+//                  env->pipe_constructor_template()->HasInstance(obj)) {        \
+//         PipeWrap* const wrap = Unwrap<PipeWrap>(obj);                         \
+//         BODY                                                                  \
+//       }                                                                       \
+//     } while (0)
+
 #define WITH_GENERIC_STREAM(env, obj, BODY)                                   \
     do {                                                                      \
       if (env->tcp_constructor_template().IsEmpty() == false &&               \
           env->tcp_constructor_template()->HasInstance(obj)) {                \
         TCPWrap* const wrap = Unwrap<TCPWrap>(obj);                           \
-        BODY                                                                  \
-      } else if (env->tty_constructor_template().IsEmpty() == false &&        \
-                 env->tty_constructor_template()->HasInstance(obj)) {         \
-        TTYWrap* const wrap = Unwrap<TTYWrap>(obj);                           \
         BODY                                                                  \
       } else if (env->pipe_constructor_template().IsEmpty() == false &&       \
                  env->pipe_constructor_template()->HasInstance(obj)) {        \

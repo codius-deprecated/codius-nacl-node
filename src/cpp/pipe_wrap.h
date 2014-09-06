@@ -23,13 +23,13 @@
 #define SRC_PIPE_WRAP_H_
 
 #include "env.h"
-#include "handle_wrap.h"
+#include "stream_wrap.h"
 
 namespace node {
 
-class PipeWrap : public HandleWrap {
+class PipeWrap : public StreamWrap {
  public:
-  int FileDescriptor();
+  uv_pipe_t* UVHandle();
 
   static v8::Local<v8::Object> Instantiate(Environment* env);
   static void Initialize(v8::Handle<v8::Object> target,
@@ -39,29 +39,16 @@ class PipeWrap : public HandleWrap {
  private:
   PipeWrap(Environment* env, v8::Handle<v8::Object> object, bool ipc);
 
-  static void OnAlloc(EventLoop::Handle* handle,
-                      size_t suggested_size,
-                      EventLoop::Buffer* buf);
-
-  static void OnRead(EventLoop::PipeHandle* handle,
-                     ssize_t nread,
-                     const EventLoop::Buffer* buf);
-  static void OnReadCommon(EventLoop::PipeHandle* handle,
-                           ssize_t nread,
-                           const EventLoop::Buffer* buf,
-                           EventLoop::HandleType pending);
-
   static void New(const v8::FunctionCallbackInfo<v8::Value>& args);
   //static void Bind(const v8::FunctionCallbackInfo<v8::Value>& args);
   //static void Listen(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void Connect(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void Open(const v8::FunctionCallbackInfo<v8::Value>& args);
 
-  static void WriteUtf8String(const v8::FunctionCallbackInfo<v8::Value>& args);
-  static void ReadStart(const v8::FunctionCallbackInfo<v8::Value>& args);
+  // static void WriteUtf8String(const v8::FunctionCallbackInfo<v8::Value>& args);
+  // static void ReadStart(const v8::FunctionCallbackInfo<v8::Value>& args);
 
-
-  EventLoop::PipeHandle handle_;
+  uv_pipe_t handle_;
 };
 
 
