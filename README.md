@@ -39,7 +39,8 @@ make library=shared nacl_ia32.release
 Build NaCl module with V8:
 
 ```sh
-./build.sh
+source ./nacl-configure NACL_SDK_ROOT
+make
 ```
 
 This will create a nexe called `node_nacl.nexe`.
@@ -50,6 +51,7 @@ Prerequisites:
 + Linux
 + Build essentials
 + zlib (32-bit version, e.g. `lib32z1-dev`)
++ stream-parser
 
 ```sh
 cd deps/v8
@@ -61,7 +63,7 @@ make library=shared i18nsupport=off ia32.release
 Build Node.js-lite executable with V8:
 
 ```sh
-./build-host.sh
+(Temporarily broken)
 ```
 
 This will create an executable called `node_nacl`.

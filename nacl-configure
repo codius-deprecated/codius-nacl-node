@@ -12,13 +12,12 @@ export LINK=x86_64-nacl-g++
     --without-snapshot \
     --dest-cpu=ia32 \
     --dest-os=linux \
-    --shared-openssl \
-    --shared-openssl-includes=/deps/openssl/openssl/include/openssl \
-    --shared-openssl-libpath=$TOOLCHAIN/x86_64-nacl/usr/lib
-    # --shared-v8 \
-    # --shared-v8-includes=$V8_ROOT/include \
-    # --shared-v8-libpath=$V8_ROOT/out/nacl_ia32.release/lib.target
-    # --shared-libuv \
-    # --shared-http-parser \
-    # --shared-cares \
-    # --shared-zlib
+    --shared-v8 \
+    --shared-v8-includes=deps/v8/include \
+    --shared-v8-libpath=../deps/v8/out/nacl_ia32.release/lib.target \
+    --without-ssl
+    #--shared-openssl \
+    #--shared-openssl-includes=/deps/openssl/openssl/include/openssl \
+    #--shared-openssl-libpath=$TOOLCHAIN/x86_64-nacl/usr/lib
+    #--shared-libuv \
+    #--shared-http-parser \
