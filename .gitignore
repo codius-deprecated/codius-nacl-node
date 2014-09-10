@@ -1,14 +1,20 @@
 node_modules/
-src/cpp/node_natives.h
+out/
 libs/ia32.debug/*.so
+config.gypi
+config.mk
 
 # Natively compiled binary
-/node_nacl
+codius_node
+codius_node_g
 
 # NaCl binary
-/node_nacl.nexe
+codius_node.nexe
+codius_node_g.nexe
 
 # NetBeans IDE
 /nbproject
 
 *.pyc
+*tags
+*.tags_sorted_by_file
