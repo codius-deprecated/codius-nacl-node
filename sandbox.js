@@ -26,9 +26,9 @@ var RUN_CONTRACT_ARGS = [
   NACL_SDK_ROOT + '/toolchain/linux_x86_glibc/x86_64-nacl/lib32/runnable-ld.so', 
   '--library-path', 
   RUN_CONTRACT_LIBS.join(':'),
-  path.resolve(__dirname, 'out/Release/node_nacl.nexe')
+  path.resolve(__dirname, 'codius_node.nexe')
 ];
-var RUN_CONTRACT_COMMAND_NONACL = path.resolve(__dirname, 'node_nacl');
+var RUN_CONTRACT_COMMAND_NONACL = path.resolve(__dirname, 'codius_node');
 var RUN_CONTRACT_ARGS_NONACL = []
 
 /**

@@ -20,7 +20,7 @@ node test.js
 To run plain without outside JS:
 
 ```sh
-$NACL_SDK_ROOT/tools/sel_ldr_x86_32 -h 3:3 -a -- $NACL_SDK_ROOT/toolchain/linux_x86_glibc/x86_64-nacl/lib32/runnable-ld.so --library-path .:deps/v8/out/nacl_ia32.release/lib.target:$NACL_SDK_ROOT/ports/lib/glibc_x86_32/Release:$NACL_SDK_ROOT/toolchain/linux_x86_glibc/x86_64-nacl/lib32 ./node_nacl.nexe
+$NACL_SDK_ROOT/tools/sel_ldr_x86_32 -h 3:3 -h 4:4 -a -- $NACL_SDK_ROOT/toolchain/linux_x86_glibc/x86_64-nacl/lib32/runnable-ld.so --library-path .:deps/v8/out/nacl_ia32.release/lib.target:$NACL_SDK_ROOT/ports/lib/glibc_x86_32/Release:$NACL_SDK_ROOT/toolchain/linux_x86_glibc/x86_64-nacl/lib32 ./codius_node.nexe
 ```
 
 ### To build NaCl-sandboxed Node.js-lite
@@ -39,11 +39,11 @@ make library=shared nacl_ia32.release
 Build NaCl module with V8:
 
 ```sh
-source ./nacl-configure NACL_SDK_ROOT
-make
+source ./codius-nacl-configure NACL_SDK_ROOT
+make nacl
 ```
 
-This will create a nexe called `node_nacl.nexe`.
+This will create a nexe called `codius_node.nexe`.
 
 ### To build unsandboxed Node.js-lite
 
@@ -63,7 +63,9 @@ make library=shared i18nsupport=off ia32.release
 Build Node.js-lite executable with V8:
 
 ```sh
-(Temporarily broken)
+source ./codius-configure
+make
+export NONACL=true
 ```
 
-This will create an executable called `node_nacl`.
+This will create an executable called `codius_node`.

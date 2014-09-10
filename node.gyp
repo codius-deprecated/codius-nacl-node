@@ -10,9 +10,8 @@
     'node_shared_http_parser%': 'false',
     'node_shared_cares%': 'false',
     'node_shared_libuv%': 'false',
-    # TODO-CODIUS: Add openssl
-    # 'node_use_openssl%': 'true',
-    'node_use_openssl%': 'false',
+    'node_use_openssl%': 'true',
+    'node_use_nacl%': 'true',
     'node_shared_openssl%': 'false',
     'node_use_mdb%': 'false',
     'node_v8_options%': '',
@@ -74,8 +73,7 @@
 
   'targets': [
     {
-      # 'target_name': 'node',
-      'target_name': 'node_nacl.nexe',
+      'target_name': 'node',
       'type': 'executable',
 
       'dependencies': [
@@ -172,14 +170,14 @@
         [ 'node_use_openssl=="true"', {
           'defines': [ 'HAVE_OPENSSL=1' ],
           'sources': [
-            'src/node_crypto.cc',
-            'src/node_crypto_bio.cc',
-            'src/node_crypto_clienthello.cc',
-            'src/node_crypto.h',
-            'src/node_crypto_bio.h',
-            'src/node_crypto_clienthello.h',
-            'src/tls_wrap.cc',
-            'src/tls_wrap.h'
+            'src/cpp/node_crypto.cc',
+            'src/cpp/node_crypto_bio.cc',
+            'src/cpp/node_crypto_clienthello.cc',
+            'src/cpp/node_crypto.h',
+            'src/cpp/node_crypto_bio.h',
+            'src/cpp/node_crypto_clienthello.h',
+            'src/cpp/tls_wrap.cc',
+            'src/cpp/tls_wrap.h'
           ],
           'conditions': [
             [ 'node_shared_openssl=="false"', {

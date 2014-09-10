@@ -16,8 +16,4 @@ export LINK=x86_64-nacl-g++
     --shared-v8-includes=deps/v8/include \
     --shared-v8-libpath=../deps/v8/out/nacl_ia32.release/lib.target \
     --without-ssl
-    #--shared-openssl \
-    #--shared-openssl-includes=/deps/openssl/openssl/include/openssl \
-    #--shared-openssl-libpath=$TOOLCHAIN/x86_64-nacl/usr/lib
-    #--shared-libuv \
-    #--shared-http-parser \
+    

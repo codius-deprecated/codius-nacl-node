@@ -23,31 +23,53 @@ endif
 # BUILDTYPE=Debug builds both release and debug builds. If you want to compile
 # just the debug build, run `make -C out BUILDTYPE=Debug` instead.
 ifeq ($(BUILDTYPE),Release)
-all: out/Makefile node_nacl.nexe
+all: out/Makefile codius_node
+nacl: out/Makefile codius_node.nexe
 else
-all: out/Makefile node_nacl.nexe node_g_nacl.nexe
+all: out/Makefile codius_node codius_node_g
+nacl: out/Makefile codius_node.nexe codius_node_g.nexe
 endif
 
 # The .PHONY is needed to ensure that we recursively use the out/Makefile
 # to check for changes.
-.PHONY: node node_g
+.PHONY: codius_node codius_node_g codius_node.nexe codius_node_g.nexe
 
 ifeq ($(USE_NINJA),1)
-node_nacl.nexe: config.gypi
+codius_node: config.gypi
 	$(NINJA) -C out/Release/
-	ln -fs out/Release/node node
+	ln -fs out/Release/node codius_node
 
-node_g_nacl.nexe: config.gypi
+codius_node_g: config.gypi
+	$(NINJA) -C out/Debug/
+	ln -fs out/Debug/node $@
+
+codius_node.nexe: config.gypi
+	$(NINJA) -C out/Release/
+	ln -fs out/Release/node codius_node.nexe
+
+codius_node_g.nexe: config.gypi
 	$(NINJA) -C out/Debug/
 	ln -fs out/Debug/node $@
 else
-node_nacl.nexe: config.gypi out/Makefile
+codius_node: config.gypi out/Makefile
 	$(MAKE) -C out BUILDTYPE=Release V=$(V)
-	ln -fs out/Release/node node
+	mv out/Release/node out/Release/codius_node
+	ln -fs out/Release/codius_node codius_node
 
-node_g_nacl.nexe: config.gypi out/Makefile
+codius_node_g: config.gypi out/Makefile
 	$(MAKE) -C out BUILDTYPE=Debug V=$(V)
-	ln -fs out/Debug/node $@
+	mv out/Debug/node out/Debug/codius_node_g
+	ln -fs out/Debug/codius_node_g $@
+
+codius_node.nexe: config.gypi out/Makefile
+	$(MAKE) -C out BUILDTYPE=Release V=$(V)
+	mv out/Release/node out/Release/codius_node.nexe
+	ln -fs out/Release/codius_node.nexe codius_node.nexe
+
+codius_node_g.nexe: config.gypi out/Makefile
+	$(MAKE) -C out BUILDTYPE=Debug V=$(V)
+	mv out/Debug/node out/Debug/codius_node_g.nexe
+	ln -fs out/Debug/codius_node_g.nexe $@
 endif
 
 # out/Makefile: common.gypi deps/uv/uv.gyp deps/http_parser/http_parser.gyp deps/zlib/zlib.gyp deps/v8/build/toolchain.gypi deps/v8/build/features.gypi deps/v8/tools/gyp/v8.gyp node.gyp config.gypi
@@ -73,7 +95,7 @@ uninstall:
 	$(PYTHON) tools/install.py $@ '$(DESTDIR)' '$(PREFIX)'
 
 clean:
-	-rm -rf out/Makefile node_nacl.nexe node_g_nacl.nexe out/$(BUILDTYPE)/node blog.html email.md
+	-rm -rf out/Makefile codius_node codius_node_g codius_node.nexe codius_node_g.nexe out/$(BUILDTYPE)/node blog.html email.md
 	-find out/ -name '*.o' -o -name '*.a' | xargs rm -rf
 	-rm -rf node_modules
 

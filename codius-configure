@@ -1,0 +1,14 @@
+#!/bin/bash
+
+export LD_LIBRARY_PATH=LD_LIBRARY_PATH:deps/v8/out/ia32.release/lib.target
+
+./configure \
+    --debug \
+    --without-nacl \
+    --without-snapshot \
+    --dest-cpu=ia32 \
+    --dest-os=linux \
+    --shared-v8 \
+    --shared-v8-includes=deps/v8/include \
+    --shared-v8-libpath=../deps/v8/out/ia32.release/lib.target \
+    --without-ssl
