@@ -378,55 +378,55 @@ int uv__socket(int domain, int type, int protocol) {
 }
 
 
-int uv__accept(int sockfd) {
-  int peerfd;
-  int err;
+// int uv__accept(int sockfd) {
+//   int peerfd;
+//   int err;
 
-  assert(sockfd >= 0);
+//   assert(sockfd >= 0);
 
-  while (1) {
-#if defined(__linux__) || __FreeBSD__ >= 10
-    static int no_accept4;
+//   while (1) {
+// #if defined(__linux__) || __FreeBSD__ >= 10
+//     static int no_accept4;
 
-    if (no_accept4)
-      goto skip;
+//     if (no_accept4)
+//       goto skip;
 
-    peerfd = uv__accept4(sockfd,
-                         NULL,
-                         NULL,
-                         UV__SOCK_NONBLOCK|UV__SOCK_CLOEXEC);
-    if (peerfd != -1)
-      return peerfd;
+//     peerfd = uv__accept4(sockfd,
+//                         NULL,
+//                         NULL,
+//                         UV__SOCK_NONBLOCK|UV__SOCK_CLOEXEC);
+//     if (peerfd != -1)
+//       return peerfd;
 
-    if (errno == EINTR)
-      continue;
+//     if (errno == EINTR)
+//       continue;
 
-    if (errno != ENOSYS)
-      return -errno;
+//     if (errno != ENOSYS)
+//       return -errno;
 
-    no_accept4 = 1;
-skip:
-#endif
+//     no_accept4 = 1;
+// skip:
+// #endif
 
-    peerfd = accept(sockfd, NULL, NULL);
-    if (peerfd == -1) {
-      if (errno == EINTR)
-        continue;
-      return -errno;
-    }
+//     peerfd = accept(sockfd, NULL, NULL);
+//     if (peerfd == -1) {
+//       if (errno == EINTR)
+//         continue;
+//       return -errno;
+//     }
 
-    err = uv__cloexec(peerfd, 1);
-    if (err == 0)
-      err = uv__nonblock(peerfd, 1);
+//     err = uv__cloexec(peerfd, 1);
+//     if (err == 0)
+//       err = uv__nonblock(peerfd, 1);
 
-    if (err) {
-      uv__close(peerfd);
-      return err;
-    }
+//     if (err) {
+//       uv__close(peerfd);
+//       return err;
+//     }
 
-    return peerfd;
-  }
-}
+//     return peerfd;
+//   }
+// }
 
 
 int uv__close(int fd) {
@@ -833,91 +833,91 @@ int uv_getrusage(uv_rusage_t* rusage) {
 }
 
 
-int uv__open_cloexec(const char* path, int flags) {
-  int err;
-  int fd;
+// int uv__open_cloexec(const char* path, int flags) {
+//   int err;
+//   int fd;
 
-#if defined(__linux__) || (defined(__FreeBSD__) && __FreeBSD__ >= 9)
-  static int no_cloexec;
+// #if defined(__linux__) || (defined(__FreeBSD__) && __FreeBSD__ >= 9)
+//   static int no_cloexec;
 
-  if (!no_cloexec) {
-    fd = open(path, flags | UV__O_CLOEXEC);
-    if (fd != -1)
-      return fd;
+//   if (!no_cloexec) {
+//     fd = open(path, flags | UV__O_CLOEXEC);
+//     if (fd != -1)
+//       return fd;
 
-    if (errno != EINVAL)
-      return -errno;
+//     if (errno != EINVAL)
+//       return -errno;
 
-    /* O_CLOEXEC not supported. */
-    no_cloexec = 1;
-  }
-#endif
+//     /* O_CLOEXEC not supported. */
+//     no_cloexec = 1;
+//   }
+// #endif
 
-  fd = open(path, flags);
-  if (fd == -1)
-    return -errno;
+//   fd = open(path, flags);
+//   if (fd == -1)
+//     return -errno;
 
-  err = uv__cloexec(fd, 1);
-  if (err) {
-    uv__close(fd);
-    return err;
-  }
+//   err = uv__cloexec(fd, 1);
+//   if (err) {
+//     uv__close(fd);
+//     return err;
+//   }
 
-  return fd;
-}
+//   return fd;
+// }
 
 
-int uv__dup2_cloexec(int oldfd, int newfd) {
-  int r;
-#if defined(__FreeBSD__) && __FreeBSD__ >= 10
-  do
-    r = dup3(oldfd, newfd, O_CLOEXEC);
-  while (r == -1 && errno == EINTR);
-  if (r == -1)
-    return -errno;
-  return r;
-#elif defined(__FreeBSD__) && defined(F_DUP2FD_CLOEXEC)
-  do
-    r = fcntl(oldfd, F_DUP2FD_CLOEXEC, newfd);
-  while (r == -1 && errno == EINTR);
-  if (r != -1)
-    return r;
-  if (errno != EINVAL)
-    return -errno;
-  /* Fall through. */
-#elif defined(__linux__)
-  static int no_dup3;
-  if (!no_dup3) {
-    do
-      r = uv__dup3(oldfd, newfd, UV__O_CLOEXEC);
-    while (r == -1 && (errno == EINTR || errno == EBUSY));
-    if (r != -1)
-      return r;
-    if (errno != ENOSYS)
-      return -errno;
-    /* Fall through. */
-    no_dup3 = 1;
-  }
-#endif
-  {
-    int err;
-    do
-      r = dup2(oldfd, newfd);
-#if defined(__linux__)
-    while (r == -1 && (errno == EINTR || errno == EBUSY));
-#else
-    while (r == -1 && errno == EINTR);
-#endif
+// int uv__dup2_cloexec(int oldfd, int newfd) {
+//   int r;
+// #if defined(__FreeBSD__) && __FreeBSD__ >= 10
+//   do
+//     r = dup3(oldfd, newfd, O_CLOEXEC);
+//   while (r == -1 && errno == EINTR);
+//   if (r == -1)
+//     return -errno;
+//   return r;
+// #elif defined(__FreeBSD__) && defined(F_DUP2FD_CLOEXEC)
+//   do
+//     r = fcntl(oldfd, F_DUP2FD_CLOEXEC, newfd);
+//   while (r == -1 && errno == EINTR);
+//   if (r != -1)
+//     return r;
+//   if (errno != EINVAL)
+//     return -errno;
+//   /* Fall through. */
+// #elif defined(__linux__)
+//   static int no_dup3;
+//   if (!no_dup3) {
+//     do
+//       r = uv__dup3(oldfd, newfd, UV__O_CLOEXEC);
+//     while (r == -1 && (errno == EINTR || errno == EBUSY));
+//     if (r != -1)
+//       return r;
+//     if (errno != ENOSYS)
+//       return -errno;
+//     /* Fall through. */
+//     no_dup3 = 1;
+//   }
+// #endif
+//   {
+//     int err;
+//     do
+//       r = dup2(oldfd, newfd);
+// #if defined(__linux__)
+//     while (r == -1 && (errno == EINTR || errno == EBUSY));
+// #else
+//     while (r == -1 && errno == EINTR);
+// #endif
 
-    if (r == -1)
-      return -errno;
+//     if (r == -1)
+//       return -errno;
 
-    err = uv__cloexec(newfd, 1);
-    if (err) {
-      uv__close(newfd);
-      return err;
-    }
+//     err = uv__cloexec(newfd, 1);
+//     if (err) {
+//       uv__close(newfd);
+//       return err;
+//     }
 
-    return r;
-  }
-}
+//     return r;
+//   }
+// }

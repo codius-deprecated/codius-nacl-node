@@ -3,8 +3,6 @@ var spawn = require('child_process').spawn;
 var util = require('util');
 var path = require('path');
 var EventEmitter = require('events').EventEmitter;
-var split = require('split');
-var concat = require('concat-stream');
 
 // TODO: Make these configurable
 var NACL_SDK_ROOT = process.env.NACL_SDK_ROOT;
