@@ -1,53 +1,25 @@
 var fs = require('fs');
+
 console.log('test contract running');
-fs.stat('sandbox.js', function(err, data){
+
+function statCallback (err, data) {
+  if (err) {
+    console.log('err:', err);
+  } else {  
     console.log("Stat for sandbox.js", data);
-});
+  }
+};
 
-//console.log(fs.readdirSync('/'));
+fs.stat('sandbox.js', statCallback);
 
+var codius = process.binding('async');
+var message = {
+  type:'api',
+  api:'fs',
+  method:'stat',
+  data:['sandbox.js']
+};
 
-// // console.log('test-contract');
+codius.postMessage(message, statCallback);
 
-// onmessage = function(message) {
-//   // var file_stuff = __readFileSync('file');
-
-//   // var response = {
-//   //   'api':'test_module',
-//   //   'method':file_stuff
-//   // };
-//   // postMessage (JSON.stringify(response));
-
-//   //postMessage (JSON.stringify(JSON.parse(message)));
-
-//   var call = {
-//     'type': 'api',
-//     'api':'test_module',
-//     'method':'dummy'
-//   };
-//   postMessage (JSON.stringify(call));
-
-//   //var parsed_msg = JSON.parse(message);
-//   var parsed_msg = JSON.parse(JSON.parse(message));
-//   if (parsed_msg.callback === 'foo') {
-//     // console.log('Sandbox got callback foo!');
-//   }
-// };
-
-
-// var module_call = {
-//   type: 'api',
-//   api:'test_module',
-//   method:'first'
-// };
-// postMessage(JSON.stringify(module_call));
-
-
-// var file_stuff = __readFileSync('file');
-
-// // var response = {
-// //   'type': 'api',
-// //   'api':'test_module',
-// //   'method':file_stuff
-// // };
-// // postMessage (JSON.stringify(response));
+codius.postMessage(JSON.stringify(message), statCallback);

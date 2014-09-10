@@ -6,6 +6,7 @@
 #include "v8.h"
 
 #include <unistd.h>
+#include <string.h>
 
 namespace node {
 namespace Async {
@@ -124,16 +125,19 @@ void PostMessage(Environment* env, const char *data, size_t data_length, Handle<
 static void PostMessage(const FunctionCallbackInfo<Value>& args) {
   Environment* env = Environment::GetCurrent(args.GetIsolate());
   HandleScope scope(env->isolate());
-  char* message;
-  size_t len;
-  
+
   if (args.Length() < 2)
     return ThrowError(env->isolate(), "needs argument object and callback");
 
+  if (!args[1]->IsFunction()) {
+    return ThrowError(env->isolate(), "second argument should be a callback");
+  }
+
   if (args[0]->IsString()) {
-    message = *Utf8Value(args[0]);
-    len     = Utf8Value(args[0]).length();
+    v8::String::Utf8Value message(args[0]);
+    PostMessage(env, *message, message.length(), Handle<Function>::Cast(args[1]));
   } else if (args[0]->IsObject()) {
+
     // Stringify the JSON
     Local<Object> global = env->context()->Global();
     Handle<Object> JSON = global->Get(String::NewFromUtf8(
@@ -143,28 +147,19 @@ static void PostMessage(const FunctionCallbackInfo<Value>& args) {
                                                             "stringify")));
     Local<Value> stringify_args[] = { args[0] };
     Local<String> str = JSON_stringify->Call(JSON, 1, stringify_args)->ToString();
-    message = *Utf8Value(str);
-    len     = Utf8Value(str).length();
+    v8::String::Utf8Value message(str);
+    PostMessage(env, *message, message.length(), Handle<Function>::Cast(args[1]));
   } else {
     return ThrowError(env->isolate(), "first argument should be a message (string or object)");
   }
-  
-  if (!args[1]->IsFunction()) {
-    return ThrowError(env->isolate(), "second argument should be a callback");
-  }
-  
-  PostMessage(env, message, len, Handle<Function>::Cast(args[1]));
 }
-
 
 void Initialize(Handle<Object> target,
                 Handle<Value> unused,
                 Handle<Context> context) {
   Environment* env = Environment::GetCurrent(context);
 
-  
-  target->Set(FIXED_ONE_BYTE_STRING(env->isolate(), "postMessage"),
-              FunctionTemplate::New(env->isolate(), PostMessage)->GetFunction());
+  NODE_SET_METHOD(target, "postMessage", PostMessage);
 }
 
 
