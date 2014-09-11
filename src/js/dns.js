@@ -101,62 +101,81 @@ function onlookup(err, addresses) {
 // Easy DNS A/AAAA look up
 // lookup(hostname, [options,] callback)
 exports.lookup = function lookup(hostname, options, callback) {
-  var hints = 0;
-  var family = -1;
-
-  // Parse arguments
-  if (hostname && typeof hostname !== 'string') {
-    throw TypeError('invalid arguments: hostname must be a string or falsey');
-  } else if (typeof options === 'function') {
-    callback = options;
-    family = 0;
-  } else if (typeof callback !== 'function') {
-    throw TypeError('invalid arguments: callback must be passed');
-  } else if (util.isObject(options)) {
-    hints = options.hints >>> 0;
-    family = options.family >>> 0;
-
-    if (hints !== 0 &&
-        hints !== exports.ADDRCONFIG &&
-        hints !== exports.V4MAPPED &&
-        hints !== (exports.ADDRCONFIG | exports.V4MAPPED)) {
-      throw new TypeError('invalid argument: hints must use valid flags');
-    }
-  } else {
-    family = options >>> 0;
-  }
-
-  if (family !== 0 && family !== 4 && family !== 6)
-    throw new TypeError('invalid argument: family must be 4 or 6');
-
-  callback = makeAsync(callback);
-
-  if (!hostname) {
-    callback(null, null, family === 6 ? 6 : 4);
-    return {};
-  }
-
-  var matchedFamily = net.isIP(hostname);
-  if (matchedFamily) {
-    callback(null, hostname, matchedFamily);
-    return {};
-  }
-
-  var req = {
-    callback: callback,
-    family: family,
-    hostname: hostname,
-    oncomplete: onlookup
+  var codius = process.binding('async');
+  var message = {
+    type:'api',
+    api:'dns',
+    method:'lookup',
+    //TODO-CODIUS: Handle incompatible node.js versions of dns.lookup
+    // data: [ hostname, {
+    //   family: options.family,
+    //   hints: options.hints
+    // }]
+    data: [ hostname, options.family ]
   };
 
-  var err = cares.getaddrinfo(req, hostname, family, hints);
-  if (err) {
-    callback(errnoException(err, 'getaddrinfo', hostname));
-    return {};
-  }
+  codius.postMessage(message, function () {
+    var args = arguments[1];
+    args.unshift(arguments[0]);
+    callback.apply(this, args);
+  });
 
-  callback.immediately = true;
-  return req;
+  // var hints = 0;
+  // var family = -1;
+
+  // // Parse arguments
+  // if (hostname && typeof hostname !== 'string') {
+  //   throw TypeError('invalid arguments: hostname must be a string or falsey');
+  // } else if (typeof options === 'function') {
+  //   callback = options;
+  //   family = 0;
+  // } else if (typeof callback !== 'function') {
+  //   throw TypeError('invalid arguments: callback must be passed');
+  // } else if (util.isObject(options)) {
+  //   hints = options.hints >>> 0;
+  //   family = options.family >>> 0;
+
+  //   if (hints !== 0 &&
+  //       hints !== exports.ADDRCONFIG &&
+  //       hints !== exports.V4MAPPED &&
+  //       hints !== (exports.ADDRCONFIG | exports.V4MAPPED)) {
+  //     throw new TypeError('invalid argument: hints must use valid flags');
+  //   }
+  // } else {
+  //   family = options >>> 0;
+  // }
+
+  // if (family !== 0 && family !== 4 && family !== 6)
+  //   throw new TypeError('invalid argument: family must be 4 or 6');
+
+  // callback = makeAsync(callback);
+
+  // if (!hostname) {
+  //   callback(null, null, family === 6 ? 6 : 4);
+  //   return {};
+  // }
+
+  // var matchedFamily = net.isIP(hostname);
+  // if (matchedFamily) {
+  //   callback(null, hostname, matchedFamily);
+  //   return {};
+  // }
+
+  // var req = {
+  //   callback: callback,
+  //   family: family,
+  //   hostname: hostname,
+  //   oncomplete: onlookup
+  // };
+
+  // var err = cares.getaddrinfo(req, hostname, family, hints);
+  // if (err) {
+  //   callback(errnoException(err, 'getaddrinfo', hostname));
+  //   return {};
+  // }
+
+  // callback.immediately = true;
+  // return req;
 };
 
 

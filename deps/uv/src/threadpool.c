@@ -84,26 +84,21 @@ static void uv__cancelled(struct uv__work* w) {
   abort();
 }
 
-struct codius_rpc_header_s {
-  unsigned long magic_bytes;
-  unsigned long callback_id;
-  unsigned long size;
-};
-
-typedef struct codius_rpc_header_s
-  codius_rpc_header_t;
-
 static void uv__codius_async_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
   size_t bytes_read;
   codius_rpc_header_t rpc_header;
   
   bytes_read = read(CODIUS_ASYNC_IO_FD, &rpc_header, 
                     sizeof(rpc_header));
+
+  // Return if nothing was read.
+  if (bytes_read==-1) return;
+
   char buf[rpc_header.size];
   bytes_read = read (CODIUS_ASYNC_IO_FD, &buf, sizeof(buf));
-  
+
   callback_list_t *cb_list;
-  if (bytes_read) {
+  if (bytes_read && bytes_read!=-1) {
     cb_list = find_callback(loop, rpc_header.callback_id);
     cb_list->work->done(cb_list->work, 0, buf, rpc_header.size);
   }
@@ -154,6 +149,18 @@ int uv_codius_async_init(uv_loop_t* loop) {
 //       abort();
 
 //   initialized = 1;
+// }
+
+
+// void uv__work_submit(uv_loop_t* loop,
+//                      struct uv__work* w,
+//                      void (*work)(struct uv__work* w),
+//                      void (*done)(struct uv__work* w, int status)) {
+//   //uv_once(&once, init_once);
+//   w->loop = loop;
+//   w->work = work;
+//   w->done = done;
+//   post(&w->wq);
 // }
 
 
@@ -259,6 +266,22 @@ static void uv__queue_done(struct uv__work* w, int err, const char *buf, size_t 
 
   req->after_work_cb(req, err, buf, buf_len);
 }
+
+
+// int uv_queue_work(uv_loop_t* loop,
+//                   uv_work_t* req,
+//                   uv_work_cb work_cb,
+//                   uv_after_work_cb after_work_cb) {
+//   if (work_cb == NULL)
+//     return -EINVAL;
+
+//   uv__req_init(loop, req, UV_WORK);
+//   req->loop = loop;
+//   req->work_cb = work_cb;
+//   req->after_work_cb = after_work_cb;
+//   uv__work_submit(loop, &req->work_req, uv__queue_work, uv__queue_done);
+//   return 0;
+// }
 
 
 int uv_queue_work(uv_loop_t* loop,

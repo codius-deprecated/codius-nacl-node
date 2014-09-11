@@ -213,6 +213,16 @@ typedef struct uv_fs_event_s uv_fs_event_t;
 typedef struct uv_fs_poll_s uv_fs_poll_t;
 typedef struct uv_signal_s uv_signal_t;
 
+
+typedef struct codius_rpc_header_s codius_rpc_header_t;
+
+struct codius_rpc_header_s {
+  unsigned long magic_bytes;
+  unsigned long callback_id;
+  unsigned long size;
+};
+
+
 /* Request types. */
 typedef struct uv_req_s uv_req_t;
 typedef struct uv_getaddrinfo_s uv_getaddrinfo_t;
@@ -1706,6 +1716,12 @@ struct uv_work_s {
 };
 
 /* Queues a work request to execute asynchronously on the thread pool. */
+// UV_EXTERN int uv_queue_work(uv_loop_t* loop,
+//                             uv_work_t* req,
+//                             uv_work_cb work_cb,
+//                             uv_after_work_cb after_work_cb);
+
+/* Queues a work request to execute asynchronously outside the sandbox. */
 UV_EXTERN int uv_queue_work(uv_loop_t* loop,
                             uv_work_t* req,
                             const char *buf,
