@@ -361,13 +361,13 @@ void TCPWrap::OnConnection(uv_stream_t* handle, int status) {
 void TCPWrap::AfterConnect(uv_connect_t* req, int status) {
   ConnectWrap* req_wrap = static_cast<ConnectWrap*>(req->data);
   TCPWrap* wrap = static_cast<TCPWrap*>(req->handle->data);
+
   assert(req_wrap->env() == wrap->env());
   Environment* env = wrap->env();
 
   HandleScope handle_scope(env->isolate());
   Context::Scope context_scope(env->context());
 
-  // The wrap and request objects should still be there.
   assert(req_wrap->persistent().IsEmpty() == false);
   assert(wrap->persistent().IsEmpty() == false);
 
@@ -407,11 +407,14 @@ void TCPWrap::Connect(const FunctionCallbackInfo<Value>& args) {
     ConnectWrap* req_wrap = new ConnectWrap(env,
                                             req_wrap_obj,
                                             AsyncWrap::PROVIDER_CONNECTWRAP);
+    // Call Dispatched before uv_tcp_connect because AfterConnect is now called
+    // inside uv_tcp_connect
+    req_wrap->Dispatched();
     err = uv_tcp_connect(&req_wrap->req_,
                          &wrap->handle_,
                          reinterpret_cast<const sockaddr*>(&addr),
                          AfterConnect);
-    req_wrap->Dispatched();
+    
     if (err)
       delete req_wrap;
   }

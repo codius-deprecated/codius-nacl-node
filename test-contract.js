@@ -25,24 +25,15 @@ codius.postMessage(message, statCallback);
 
 codius.postMessage(JSON.stringify(message), statCallback);
 
-// var net = require('net');
+var net = require('net');
 
-// var HOST = '127.0.0.1';
-// var PORT = 6969;
+var HOST = '127.0.0.1';
+var PORT = 6969;
 
-// var client = new net.Socket();
-
-// console.log("made a socket");
-
-// client.connect(PORT, HOST, function() {
-//   console.log('CONNECTED TO: ' + HOST + ':' + PORT);
-// });
-
-
-// var client = net.connect(PORT, HOST, function(error, connectionId) {
-//   console.log('CONNECTED TO: ' + HOST + ':' + PORT);
-//   net.send(connectionId, "Hello");
-// });
+var client = net.connect(PORT, HOST, function(error, connectionId) {
+  console.log('CONNECTED TO: ' + HOST + ':' + PORT);
+  client.write("Hello");
+});
 
 
 

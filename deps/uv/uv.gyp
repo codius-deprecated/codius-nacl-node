@@ -150,7 +150,6 @@
             'src/jsmn.c',
             'src/jsmn.h',
             'src/json.c',
-            'src/json.h',
             'src/loop.c',
             'src/loop-watcher.c',
             'src/pipe.c',

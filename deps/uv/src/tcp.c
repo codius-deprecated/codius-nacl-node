@@ -123,9 +123,23 @@ int uv__tcp_connect(uv_connect_t* req,
 
   handle->delayed_error = 0;
 
-  do
-    r = connect(uv__stream_fd(handle), addr, addrlen);
-  while (r == -1 && errno == EINTR);
+  // TODO-CODIUS: We're about to cast addr to a sockaddr_in, which is only possible
+  //              if the family is IPv4. For IPv6 that next section will have to
+  //              be different.
+  assert(addr->sa_family == AF_INET);
+
+  const char* frame = "{\"type\":\"api\",\"api\":\"net\",\"method\":\"connect\",\"data\":[%d, %d, %d, %d]}";
+  char message [UV_SYNC_MAX_MESSAGE_SIZE];
+  int len;
+  len = snprintf (message, UV_SYNC_MAX_MESSAGE_SIZE, frame, uv__stream_fd(handle), addr->sa_family, ((struct sockaddr_in*)addr)->sin_addr.s_addr, ((struct sockaddr_in*)addr)->sin_port);
+  if (len==-1) {
+    printf("Error forming socket message.");
+    abort();
+  }
+  const char* resp_buf;
+  size_t resp_len;
+  uv_sync_call(message, len, &resp_buf, &resp_len);
+  r = uv_parse_json_int(resp_buf, resp_len);
 
   if (r == -1) {
     if (errno == EINPROGRESS)
@@ -140,16 +154,10 @@ int uv__tcp_connect(uv_connect_t* req,
       return -errno;
   }
 
-  uv__req_init(handle->loop, req, UV_CONNECT);
-  req->cb = cb;
+  // Successful uv_sync_call == UV_CONNECT event
+  // Call the callback
   req->handle = (uv_stream_t*) handle;
-  QUEUE_INIT(&req->queue);
-  handle->connect_req = req;
-
-  uv__io_start(handle->loop, &handle->io_watcher, UV__POLLOUT);
-
-  if (handle->delayed_error)
-    uv__io_feed(handle->loop, &handle->io_watcher);
+  cb(req, 0);
 
   return 0;
 }

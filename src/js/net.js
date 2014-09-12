@@ -40,7 +40,6 @@ function createPipe() {
 
 // constructor for lazy loading
 function createTCP() {
-  console.log('createTCP');
   var TCP = process.binding('tcp_wrap').TCP;
   return new TCP();
 }
@@ -517,8 +516,8 @@ function onread(nread, buffer) {
       handle.reading = false;
       debug('readStop');
       var err = handle.readStop();
-      if (err)
-        self._destroy(errnoException(err, 'read'));
+      // if (err)
+      //   self._destroy(errnoException(err, 'read'));
     }
     return;
   }
@@ -817,9 +816,7 @@ function connect(self, address, port, addressType, localAddress, localPort) {
     if (addressType === 6) {
       err = self._handle.connect6(req, address, port);
     } else if (addressType === 4) {
-      console.log('connecting');
       err = self._handle.connect(req, address, port);
-      console.log('connected', err);
     }
   } else {
     err = self._handle.connect(req, address, afterConnect);
@@ -861,7 +858,6 @@ Socket.prototype.connect = function(options, cb) {
   debug('pipe', pipe, options.path);
 
   if (!this._handle) {
-    console.log('net.connect');
     this._handle = pipe ? createPipe() : createTCP();
     initSocketHandle(this);
   }
@@ -951,7 +947,6 @@ Socket.prototype.unref = function() {
 
 function afterConnect(status, handle, req, readable, writable) {
   var self = handle.owner;
-  console.log('afterConnect');
   // callback may come after call to destroy
   if (self.destroyed) {
     return;

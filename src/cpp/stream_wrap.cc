@@ -552,15 +552,31 @@ void StreamWrap::WriteUtf8String(const FunctionCallbackInfo<Value>& args) {
   Environment* env = Environment::GetCurrent(args.GetIsolate());
 
   StreamWrap* wrap = Unwrap<StreamWrap>(args.Holder());
-
-  assert(args[0]->IsObject());
-  assert(args[1]->IsString());
-
-  node::Utf8Value name(args[1]);
-
-  //write(wrap->handle_.GetFileDescriptor(), *name, name.length());
-  write(wrap->stream()->io_watcher.fd, *name, name.length());
-  // TODO-CODIUS: Do stuff...
+  if (wrap->stream()->type==UV_TCP) {
+    // Call socket outside the sandbox.
+    const char* frame = "{\"type\":\"api\",\"api\":\"net\",\"method\":\"write\",\"data\":[%d,\"test_message\"]}";
+    char message [UV_SYNC_MAX_MESSAGE_SIZE];
+    int len;
+    len = snprintf (message, UV_SYNC_MAX_MESSAGE_SIZE, frame, wrap->stream()->io_watcher.fd);
+    if (len==-1) {
+      printf("Error forming write message.\n");
+      abort();
+    }
+  
+    const char* resp_buf;
+    size_t resp_len;
+    uv_sync_call(message, len, &resp_buf, &resp_len);
+    //int ret = uv_parse_json_int(resp_buf, resp_len);
+  } else {
+    assert(args[0]->IsObject());
+    assert(args[1]->IsString());
+  
+    node::Utf8Value name(args[1]);
+  
+    //write(wrap->handle_.GetFileDescriptor(), *name, name.length());
+    write(wrap->stream()->io_watcher.fd, *name, name.length());
+    // TODO-CODIUS: Do stuff...
+  }
 
   args.GetReturnValue().Set(0);  // uv_pipe_connect() doesn't return errors.
 }

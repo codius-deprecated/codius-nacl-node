@@ -2336,6 +2336,8 @@ UV_EXTERN int uv_thread_create(uv_thread_t* tid, uv_thread_cb entry, void* arg);
 UV_EXTERN unsigned long uv_thread_self(void);
 UV_EXTERN int uv_thread_join(uv_thread_t *tid);
 
+UV_EXTERN int uv_parse_json_int(char *js, size_t len);
+
 /* The presence of these unions force similar struct layout. */
 #define XX(_, name) uv_ ## name ## _t name;
 union uv_any_handle {
@@ -2347,6 +2349,12 @@ union uv_any_req {
 };
 #undef XX
 
+/*
+ * Call a Codius outside API method synchronously.
+ */
+int uv_sync_call(const char* message, size_t len, const char **resp_buf, size_t *resp_len);
+
+#define UV_SYNC_MAX_MESSAGE_SIZE 16384
 
 struct uv_loop_s {
   /* User data - use this for whatever. */

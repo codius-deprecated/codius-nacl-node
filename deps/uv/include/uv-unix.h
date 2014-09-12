@@ -46,6 +46,7 @@
 
 // TODO-CODIUS Detect platform dynamically
 #include "uv-codius.h"
+/*
 // #if defined(__linux__)
 // # include "uv-linux.h"
 // #elif defined(_AIX)
@@ -60,6 +61,7 @@
 //       defined(__NetBSD__)
 // # include "uv-bsd.h"
 // #endif
+*/
 
 #ifndef NI_MAXHOST
 # define NI_MAXHOST 1025

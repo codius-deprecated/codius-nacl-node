@@ -807,10 +807,28 @@ static void uv__read(uv_stream_t* stream) {
     assert(uv__stream_fd(stream) >= 0);
 
     if (!is_ipc) {
-      do {
-        nread = read(uv__stream_fd(stream), buf.base, buf.len);
+      if (stream->type == UV_TCP) {
+        const char* frame = "{\"type\":\"api\",\"api\":\"net\",\"method\":\"read\",\"data\":[%d]}";
+        char message [UV_SYNC_MAX_MESSAGE_SIZE];
+        int len;
+        len = snprintf (message, UV_SYNC_MAX_MESSAGE_SIZE, frame, uv__stream_fd(stream));
+        if (len==-1) {
+          printf("Error forming socket message.");
+          abort();
+        }
+        const char* resp_buf;
+        size_t resp_len;
+        uv_sync_call(message, len, &resp_buf, &resp_len);
+        //uv_parse_json_str(resp_buf, resp_len);
+        nread = 0;
+        printf("Read done\n");
+        fflush(stdout);
+      } else {
+        do {
+          nread = read(uv__stream_fd(stream), buf.base, buf.len);
+        }
+        while (nread < 0 && errno == EINTR);
       }
-      while (nread < 0 && errno == EINTR);
     } else {
       /* ipc uses recvmsg */
      //  msg.msg_flags = 0;
@@ -830,22 +848,19 @@ static void uv__read(uv_stream_t* stream) {
 
     if (nread < 0) {
       /* Error */
-//      if (errno == EAGAIN || errno == EWOULDBLOCK) {
+      if (errno == EAGAIN || errno == EWOULDBLOCK) {
         /* Wait for the next one. */
-//        if (stream->flags & UV_STREAM_READING) {
-//          uv__io_start(stream->loop, &stream->io_watcher, UV__POLLIN);
-//          uv__stream_osx_interrupt_select(stream);
-//        }
-//        stream->read_cb(stream, 0, &buf);
-//      } else {
-//        /* Error. User should call uv_close(). */
-//        stream->read_cb(stream, -errno, &buf);
-//        assert(!uv__io_active(&stream->io_watcher, UV__POLLIN) &&
-//               "stream->read_cb(status=-1) did not call uv_close()");
-//      }
-      printf("TODO-CODIUS: Unhandled read error!\n");
-      fflush(stdout);
-      abort();
+        if (stream->flags & UV_STREAM_READING) {
+          uv__io_start(stream->loop, &stream->io_watcher, UV__POLLIN);
+          uv__stream_osx_interrupt_select(stream);
+        }
+        stream->read_cb(stream, 0, &buf);
+      } else {
+        /* Error. User should call uv_close(). */
+        stream->read_cb(stream, -errno, &buf);
+        assert(!uv__io_active(&stream->io_watcher, UV__POLLIN) &&
+              "stream->read_cb(status=-1) did not call uv_close()");
+      }
       return;
     } else if (nread == 0) {
       uv__stream_eof(stream, &buf);
