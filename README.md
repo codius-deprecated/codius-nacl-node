@@ -39,7 +39,7 @@ make library=shared nacl_ia32.release
 Build NaCl module with V8:
 
 ```sh
-source ./codius-nacl-configure NACL_SDK_ROOT
+source ./codius-nacl-configure $NACL_SDK_ROOT
 make nacl
 ```
 
@@ -65,7 +65,7 @@ Build Node.js-lite executable with V8:
 ```sh
 source ./codius-configure
 make
-export NONACL=true
+export NONACL=1
 ```
 
 This will create an executable called `codius_node`.
