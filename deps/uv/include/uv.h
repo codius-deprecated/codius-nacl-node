@@ -2352,7 +2352,7 @@ union uv_any_req {
 /*
  * Call a Codius outside API method synchronously.
  */
-int uv_sync_call(const char* message, size_t len, const char **resp_buf, size_t *resp_len);
+int uv_sync_call(const char* message, size_t len, const char *resp_buf, size_t buf_size);
 
 #define UV_SYNC_MAX_MESSAGE_SIZE 16384
 
