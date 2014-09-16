@@ -2337,6 +2337,7 @@ UV_EXTERN unsigned long uv_thread_self(void);
 UV_EXTERN int uv_thread_join(uv_thread_t *tid);
 
 UV_EXTERN int uv_parse_json_int(char *js, size_t len);
+UV_EXTERN int uv_parse_json_str(char *js, size_t len, const char *buf, size_t buf_size);
 
 /* The presence of these unions force similar struct layout. */
 #define XX(_, name) uv_ ## name ## _t name;

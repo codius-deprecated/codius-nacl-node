@@ -796,16 +796,16 @@ static void uv__read(uv_stream_t* stream) {
       && (count-- > 0)) {
     assert(stream->alloc_cb != NULL);
 
-    // stream->alloc_cb((uv_handle_t*)stream, 64 * 1024, &buf);
-    // if (buf.len == 0) {
+    stream->alloc_cb((uv_handle_t*)stream, 64 * 1024, &buf);
+
+    if (buf.len == 0) {
       /* User indicates it can't or won't handle the read. */
-    //   stream->read_cb(stream, UV_ENOBUFS, &buf);
-    //   return;
-    // }
+      stream->read_cb(stream, UV_ENOBUFS, &buf);
+      return;
+    }
 
     assert(buf.base != NULL);
     assert(uv__stream_fd(stream) >= 0);
-
     if (!is_ipc) {
       if (stream->type == UV_TCP) {
         const char* frame = "{\"type\":\"api\",\"api\":\"net\",\"method\":\"read\",\"data\":[%d]}";
@@ -823,11 +823,27 @@ static void uv__read(uv_stream_t* stream) {
           //TODO-CODIUS: handle error
         }
 
-        //uv_parse_json_str(resp_buf, resp_len);
+        nread = uv_parse_json_str(resp_buf, resp_len, buf.base, buf.len);
 
-        nread = 0;
-        printf("Read done\n");
-        fflush(stdout);
+        //hex to string
+        char *src = buf.base; 
+        char *dst = buf.base;
+        char *end = buf.base + nread;
+        unsigned int u;
+        int new_len = 0;
+        while (dst < end && sscanf(src, "%2x", &u) == 1) {
+          *dst++ = u;
+          src += 2;
+          ++new_len;
+        }
+
+        nread = new_len;
+
+        /* Return if nothing was read. */
+        if (!nread) {
+          free(buf.base);
+          return;
+        }
       } else {
         do {
           nread = read(uv__stream_fd(stream), buf.base, buf.len);

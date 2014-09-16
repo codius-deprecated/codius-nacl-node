@@ -7,7 +7,7 @@ function statCallback (err, data) {
   if (err) {
     console.log('err:', err);
   } else {  
-    //console.log("Stat for sandbox.js", data);
+    console.log("Stat for sandbox.js", data);
   }
 };
 
@@ -35,7 +35,10 @@ var client = net.connect(PORT, HOST, function(error, connectionId) {
   client.write("Hello");
 });
 
-
+client.on('data', function(data) {
+  console.log(data);
+  console.log(data.toString('utf8'));
+});
 
 
 
