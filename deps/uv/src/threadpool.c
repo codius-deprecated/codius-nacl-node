@@ -40,7 +40,7 @@ static uv_thread_t default_threads[4];
 static QUEUE exit_message;
 static QUEUE wq;
 static volatile int initialized;
-static unsigned long int unique_id = 0;
+static unsigned long int unique_id = 1; //0 indicates no callback (synchronous)
 
 typedef struct callback_list_s callback_list_t;
 
@@ -87,15 +87,38 @@ static void uv__cancelled(struct uv__work* w) {
 static void uv__codius_async_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
   size_t bytes_read;
   codius_rpc_header_t rpc_header;
-  
-  bytes_read = read(CODIUS_ASYNC_IO_FD, &rpc_header, 
-                    sizeof(rpc_header));
+  const int fd = 3;
 
-  // Return if nothing was read.
-  if (bytes_read==-1) return;
+  const char* message = "{\"type\":\"request_async_response\"}";
+  
+  // char resp_buf[UV_SYNC_MAX_MESSAGE_SIZE];
+  // int resp_len;
+  // resp_len = uv_sync_call(message, len, resp_buf, sizeof(resp_buf));
+
+  rpc_header.magic_bytes = CODIUS_MAGIC_BYTES;
+  rpc_header.callback_id = 0;
+  rpc_header.size = strlen(message);
+  
+  if (-1==write(fd, &rpc_header, sizeof(rpc_header)) ||
+      -1==write(fd, message, strlen(message))) {
+    perror("write()");
+    //TYPE_ERROR("Error writing to sync fd 4");
+    return -1;
+  }
+  
+  bytes_read = read(fd, &rpc_header, sizeof(rpc_header));
+  if (rpc_header.magic_bytes!=CODIUS_MAGIC_BYTES) {
+    //TYPE_ERROR("Error reading sync fd 4, invalid header");
+    return -1;
+  }
+  
+  // No asynchronous responses found.
+  if (rpc_header.size==0) {
+    return;
+  }
 
   char buf[rpc_header.size];
-  bytes_read = read (CODIUS_ASYNC_IO_FD, &buf, sizeof(buf));
+  bytes_read = read(fd, &buf, rpc_header.size);
 
   callback_list_t *cb_list;
   if (bytes_read && bytes_read!=-1) {
@@ -107,8 +130,6 @@ static void uv__codius_async_io(uv_loop_t* loop, uv__io_t* w, unsigned int event
 int uv_codius_async_init(uv_loop_t* loop) {
   uv__io_init(&loop->codius_async_watcher, uv__codius_async_io, CODIUS_ASYNC_IO_FD);
   uv__io_start(loop, &loop->codius_async_watcher, UV__POLLIN);
-  
-  fcntl(CODIUS_ASYNC_IO_FD, F_SETFL, fcntl(CODIUS_ASYNC_IO_FD, F_GETFL) | O_NONBLOCK);
 
   return 0;
 }

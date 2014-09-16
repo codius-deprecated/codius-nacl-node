@@ -562,10 +562,13 @@ void StreamWrap::WriteUtf8String(const FunctionCallbackInfo<Value>& args) {
       printf("Error forming write message.\n");
       abort();
     }
-  
-    const char* resp_buf;
-    size_t resp_len;
-    uv_sync_call(message, len, &resp_buf, &resp_len);
+
+    char resp_buf[UV_SYNC_MAX_MESSAGE_SIZE];
+    int resp_len;
+    resp_len = uv_sync_call(message, len, resp_buf, sizeof(resp_buf));
+    if (resp_len==-1) {
+      //TODO-CODIUS: handle error
+    }
     //int ret = uv_parse_json_int(resp_buf, resp_len);
   } else {
     assert(args[0]->IsObject());

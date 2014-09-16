@@ -136,9 +136,12 @@ int uv__tcp_connect(uv_connect_t* req,
     printf("Error forming socket message.");
     abort();
   }
-  const char* resp_buf;
-  size_t resp_len;
-  uv_sync_call(message, len, &resp_buf, &resp_len);
+  char resp_buf[UV_SYNC_MAX_MESSAGE_SIZE];
+  int resp_len;
+  resp_len = uv_sync_call(message, len, resp_buf, sizeof(resp_buf));
+  if (resp_len==-1) {
+    return -errno;
+  }
   r = uv_parse_json_int(resp_buf, resp_len);
 
   if (r == -1) {

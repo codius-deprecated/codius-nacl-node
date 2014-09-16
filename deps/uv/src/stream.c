@@ -809,17 +809,22 @@ static void uv__read(uv_stream_t* stream) {
     if (!is_ipc) {
       if (stream->type == UV_TCP) {
         const char* frame = "{\"type\":\"api\",\"api\":\"net\",\"method\":\"read\",\"data\":[%d]}";
-        char message [UV_SYNC_MAX_MESSAGE_SIZE];
+        char message[UV_SYNC_MAX_MESSAGE_SIZE];
         int len;
         len = snprintf (message, UV_SYNC_MAX_MESSAGE_SIZE, frame, uv__stream_fd(stream));
         if (len==-1) {
           printf("Error forming socket message.");
           abort();
         }
-        const char* resp_buf;
-        size_t resp_len;
-        uv_sync_call(message, len, &resp_buf, &resp_len);
+        char resp_buf[UV_SYNC_MAX_MESSAGE_SIZE];
+        int resp_len;
+        resp_len = uv_sync_call(message, len, resp_buf, sizeof(resp_buf));
+        if (resp_len==-1) {
+          //TODO-CODIUS: handle error
+        }
+
         //uv_parse_json_str(resp_buf, resp_len);
+
         nread = 0;
         printf("Read done\n");
         fflush(stdout);

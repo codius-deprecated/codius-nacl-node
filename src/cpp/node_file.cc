@@ -101,7 +101,7 @@ static int Sync_Call(Environment* env, const char* func,
   // If you hit this assertion, you forgot to enter the v8::Context first.
   assert(env->context() == env->isolate()->GetCurrentContext());
   size_t bytes_read;
-  const int sync_fd = 4;
+  const int fd = 3;
   Local<Object> message = Object::New(env->isolate());
   Handle<Array> params;
   
@@ -150,20 +150,20 @@ static int Sync_Call(Environment* env, const char* func,
   rpc_header.callback_id = 0;
   rpc_header.size = message_v.length();
   
-  if (-1==write(sync_fd, &rpc_header, sizeof(rpc_header)) ||
-      -1==write(sync_fd, *message_v, strlen(*message_v))) {
+  if (-1==write(fd, &rpc_header, sizeof(rpc_header)) ||
+      -1==write(fd, *message_v, strlen(*message_v))) {
     perror("write()");
     TYPE_ERROR("Error writing to sync fd 4");
     return -1;
   }
   
-  bytes_read = read(sync_fd, &rpc_header, sizeof(rpc_header));
+  bytes_read = read(fd, &rpc_header, sizeof(rpc_header));
   if (rpc_header.magic_bytes!=codius_magic_bytes) {
     TYPE_ERROR("Error reading sync fd 4, invalid header");
   }
   
   char resp_buf[rpc_header.size];
-  bytes_read = read (sync_fd, &resp_buf, sizeof(resp_buf));
+  bytes_read = read (fd, &resp_buf, sizeof(resp_buf));
   Local<String> response_str = String::NewFromUtf8(env->isolate(), resp_buf, 
                                                    String::kNormalString,
                                                    sizeof(resp_buf));
