@@ -118,44 +118,44 @@ int uv__stream_open(uv_stream_t* stream, int fd, int flags) {
 }
 
 
-// void uv__stream_destroy(uv_stream_t* stream) {
-//   uv_write_t* req;
-//   QUEUE* q;
+void uv__stream_destroy(uv_stream_t* stream) {
+  uv_write_t* req;
+  QUEUE* q;
 
-//   assert(!uv__io_active(&stream->io_watcher, UV__POLLIN | UV__POLLOUT));
-//   assert(stream->flags & UV_CLOSED);
+  assert(!uv__io_active(&stream->io_watcher, UV__POLLIN | UV__POLLOUT));
+  assert(stream->flags & UV_CLOSED);
 
-//   if (stream->connect_req) {
-//     uv__req_unregister(stream->loop, stream->connect_req);
-//     stream->connect_req->cb(stream->connect_req, -ECANCELED);
-//     stream->connect_req = NULL;
-//   }
+  if (stream->connect_req) {
+    uv__req_unregister(stream->loop, stream->connect_req);
+    stream->connect_req->cb(stream->connect_req, -ECANCELED);
+    stream->connect_req = NULL;
+  }
 
-//   while (!QUEUE_EMPTY(&stream->write_queue)) {
-//     q = QUEUE_HEAD(&stream->write_queue);
-//     QUEUE_REMOVE(q);
+  while (!QUEUE_EMPTY(&stream->write_queue)) {
+    q = QUEUE_HEAD(&stream->write_queue);
+    QUEUE_REMOVE(q);
 
-//     req = QUEUE_DATA(q, uv_write_t, queue);
-//     req->error = -ECANCELED;
+    req = QUEUE_DATA(q, uv_write_t, queue);
+    req->error = -ECANCELED;
 
-//     QUEUE_INSERT_TAIL(&stream->write_completed_queue, &req->queue);
-//   }
+    QUEUE_INSERT_TAIL(&stream->write_completed_queue, &req->queue);
+  }
 
-//   uv__write_callbacks(stream);
+  uv__write_callbacks(stream);
 
-//   if (stream->shutdown_req) {
-//     /* The ECANCELED error code is a lie, the shutdown(2) syscall is a
-//      * fait accompli at this point. Maybe we should revisit this in v0.11.
-//      * A possible reason for leaving it unchanged is that it informs the
-//      * callee that the handle has been destroyed.
-//      */
-//     uv__req_unregister(stream->loop, stream->shutdown_req);
-//     stream->shutdown_req->cb(stream->shutdown_req, -ECANCELED);
-//     stream->shutdown_req = NULL;
-//   }
+  if (stream->shutdown_req) {
+    /* The ECANCELED error code is a lie, the shutdown(2) syscall is a
+     * fait accompli at this point. Maybe we should revisit this in v0.11.
+     * A possible reason for leaving it unchanged is that it informs the
+     * callee that the handle has been destroyed.
+     */
+    uv__req_unregister(stream->loop, stream->shutdown_req);
+    stream->shutdown_req->cb(stream->shutdown_req, -ECANCELED);
+    stream->shutdown_req = NULL;
+  }
 
-//   assert(stream->write_queue_size == 0);
-// }
+  assert(stream->write_queue_size == 0);
+}
 
 
 /* Implements a best effort approach to mitigating accept() EMFILE errors.
@@ -383,16 +383,16 @@ int uv_listen(uv_stream_t* stream, int backlog, uv_connection_cb cb) {
 // }
 
 
-// static size_t uv__write_req_size(uv_write_t* req) {
-//   size_t size;
+static size_t uv__write_req_size(uv_write_t* req) {
+  size_t size;
 
-//   assert(req->bufs != NULL);
-//   size = uv__count_bufs(req->bufs + req->write_index,
-//                         req->nbufs - req->write_index);
-//   assert(req->handle->write_queue_size >= size);
+  assert(req->bufs != NULL);
+  size = uv__count_bufs(req->bufs + req->write_index,
+                        req->nbufs - req->write_index);
+  assert(req->handle->write_queue_size >= size);
 
-//   return size;
-// }
+  return size;
+}
 
 
 // static void uv__write_req_finish(uv_write_t* req) {
@@ -606,31 +606,31 @@ static int uv__getiovmax() {
 // }
 
 
-// static void uv__write_callbacks(uv_stream_t* stream) {
-//   uv_write_t* req;
-//   QUEUE* q;
+static void uv__write_callbacks(uv_stream_t* stream) {
+  uv_write_t* req;
+  QUEUE* q;
 
-//   while (!QUEUE_EMPTY(&stream->write_completed_queue)) {
-//     /* Pop a req off write_completed_queue. */
-//     q = QUEUE_HEAD(&stream->write_completed_queue);
-//     req = QUEUE_DATA(q, uv_write_t, queue);
-//     QUEUE_REMOVE(q);
-//     uv__req_unregister(stream->loop, req);
+  while (!QUEUE_EMPTY(&stream->write_completed_queue)) {
+    /* Pop a req off write_completed_queue. */
+    q = QUEUE_HEAD(&stream->write_completed_queue);
+    req = QUEUE_DATA(q, uv_write_t, queue);
+    QUEUE_REMOVE(q);
+    uv__req_unregister(stream->loop, req);
 
-//     if (req->bufs != NULL) {
-//       stream->write_queue_size -= uv__write_req_size(req);
-//       if (req->bufs != req->bufsml)
-//         free(req->bufs);
-//       req->bufs = NULL;
-//     }
+    if (req->bufs != NULL) {
+      stream->write_queue_size -= uv__write_req_size(req);
+      if (req->bufs != req->bufsml)
+        free(req->bufs);
+      req->bufs = NULL;
+    }
 
-//     /* NOTE: call callback AFTER freeing the request data. */
-//     if (req->cb)
-//       req->cb(req, req->error);
-//   }
+    /* NOTE: call callback AFTER freeing the request data. */
+    if (req->cb)
+      req->cb(req, req->error);
+  }
 
-//   assert(QUEUE_EMPTY(&stream->write_completed_queue));
-// }
+  assert(QUEUE_EMPTY(&stream->write_completed_queue));
+}
 
 
 uv_handle_type uv__handle_type(int fd) {

@@ -106,9 +106,9 @@ void uv_close(uv_handle_t* handle, uv_close_cb close_cb) {
     uv__stream_close((uv_stream_t*)handle);
     break;
 
-  // case UV_TCP:
-  //   uv__tcp_close((uv_tcp_t*)handle);
-  //   break;
+  case UV_TCP:
+    uv__tcp_close((uv_tcp_t*)handle);
+    break;
 
   // case UV_UDP:
   //   uv__udp_close((uv_udp_t*)handle);
@@ -196,11 +196,11 @@ static void uv__finish_close(uv_handle_t* handle) {
     case UV_SIGNAL:
       break;
 
+    // case UV_TTY:
     case UV_NAMED_PIPE:
     case UV_TCP:
-    // case UV_TTY:
-    //   uv__stream_destroy((uv_stream_t*)handle);
-    //   break;
+      uv__stream_destroy((uv_stream_t*)handle);
+      break;
 
     // case UV_UDP:
     //   uv__udp_finish_close((uv_udp_t*)handle);
@@ -482,15 +482,31 @@ int uv__close(int fd) {
   assert(fd > STDERR_FILENO);  /* Catch stdio close bugs. */
 
   saved_errno = errno;
-  rc = close(fd);
-  if (rc == -1) {
-    rc = -errno;
-    if (rc == -EINTR)
-      rc = -EINPROGRESS;  /* For platform/libc consistency. */
-    errno = saved_errno;
+  //rc = close(fd);
+  // if (rc == -1) {
+  //   rc = -errno;
+  //   if (rc == -EINTR)
+  //     rc = -EINPROGRESS;  /* For platform/libc consistency. */
+  //   errno = saved_errno;
+  // }
+  //return rc;
+  
+  const char* frame = "{\"type\":\"api\",\"api\":\"net\",\"method\":\"close\",\"data\":[%d]}";
+  char message[UV_SYNC_MAX_MESSAGE_SIZE];
+  int len;
+  len = snprintf (message, UV_SYNC_MAX_MESSAGE_SIZE, frame, fd);
+  if (len==-1) {
+    printf("Error forming socket message.");
+    abort();
+  }
+  char resp_buf[UV_SYNC_MAX_MESSAGE_SIZE];
+  int resp_len;
+  resp_len = uv_sync_call(message, len, resp_buf, sizeof(resp_buf));
+  if (resp_len==-1) {
+    //TODO-CODIUS: handle error
   }
 
-  return rc;
+  return 0;
 }
 
 
