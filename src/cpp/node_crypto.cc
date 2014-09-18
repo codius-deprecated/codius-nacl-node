@@ -151,37 +151,39 @@ template int SSLWrap<TLSCallbacks>::TLSExtStatusCallback(SSL* s, void* arg);
 
 
 static void crypto_threadid_cb(CRYPTO_THREADID* tid) {
-  CRYPTO_THREADID_set_numeric(tid, uv_thread_self());
+  // TODO-CODIUS: Show real thread id
+  //CRYPTO_THREADID_set_numeric(tid, uv_thread_self());
+  CRYPTO_THREADID_set_numeric(tid, 1);
 }
 
-
+// TODO-CODIUS: Re-enable crypto locks
 static void crypto_lock_init(void) {
-  int i, n;
+  // int i, n;
 
-  n = CRYPTO_num_locks();
-  locks = new uv_rwlock_t[n];
+  // n = CRYPTO_num_locks();
+  // locks = new uv_rwlock_t[n];
 
-  for (i = 0; i < n; i++)
-    if (uv_rwlock_init(locks + i))
-      abort();
+  // for (i = 0; i < n; i++)
+  //   if (uv_rwlock_init(locks + i))
+  //     abort();
 }
 
 
 static void crypto_lock_cb(int mode, int n, const char* file, int line) {
-  assert((mode & CRYPTO_LOCK) || (mode & CRYPTO_UNLOCK));
-  assert((mode & CRYPTO_READ) || (mode & CRYPTO_WRITE));
+  // assert((mode & CRYPTO_LOCK) || (mode & CRYPTO_UNLOCK));
+  // assert((mode & CRYPTO_READ) || (mode & CRYPTO_WRITE));
 
-  if (mode & CRYPTO_LOCK) {
-    if (mode & CRYPTO_READ)
-      uv_rwlock_rdlock(locks + n);
-    else
-      uv_rwlock_wrlock(locks + n);
-  } else {
-    if (mode & CRYPTO_READ)
-      uv_rwlock_rdunlock(locks + n);
-    else
-      uv_rwlock_wrunlock(locks + n);
-  }
+  // if (mode & CRYPTO_LOCK) {
+  //   if (mode & CRYPTO_READ)
+  //     uv_rwlock_rdlock(locks + n);
+  //   else
+  //     uv_rwlock_wrlock(locks + n);
+  // } else {
+  //   if (mode & CRYPTO_READ)
+  //     uv_rwlock_rdunlock(locks + n);
+  //   else
+  //     uv_rwlock_wrunlock(locks + n);
+  // }
 }
 
 
@@ -1533,7 +1535,8 @@ void SSLWrap<Base>::NewSessionDone(const FunctionCallbackInfo<Value>& args) {
 
   Base* w = Unwrap<Base>(args.Holder());
   w->new_session_wait_ = false;
-  w->NewSessionDoneCb();
+  // TODO-CODIUS: Re-enable once tcp_wrap.cc compiles
+  // w->NewSessionDoneCb();
 }
 
 
@@ -4576,10 +4579,11 @@ void PBKDF2(const FunctionCallbackInfo<Value>& args) {
     // XXX(trevnorris): This will need to go with the rest of domains.
     if (env->in_domain())
       obj->Set(env->domain_string(), env->domain_array()->Get(0));
-    uv_queue_work(env->event_loop(),
-                  req->work_req(),
-                  EIO_PBKDF2,
-                  EIO_PBKDF2After);
+    // TODO-CODIUS: Re-enable async
+    // uv_queue_work(env->event_loop(),
+    //               req->work_req(),
+    //               EIO_PBKDF2,
+    //               EIO_PBKDF2After);
   } else {
     Local<Value> argv[2];
     EIO_PBKDF2(req);
@@ -4740,10 +4744,12 @@ void RandomBytes(const FunctionCallbackInfo<Value>& args) {
     // XXX(trevnorris): This will need to go with the rest of domains.
     if (env->in_domain())
       obj->Set(env->domain_string(), env->domain_array()->Get(0));
-    uv_queue_work(env->event_loop(),
-                  req->work_req(),
-                  RandomBytesWork<pseudoRandom>,
-                  RandomBytesAfter);
+
+    // TODO-CODIUS: Re-enable async
+    // uv_queue_work(env->event_loop(),
+    //               req->work_req(),
+    //               RandomBytesWork<pseudoRandom>,
+    //               RandomBytesAfter);
     args.GetReturnValue().Set(obj);
   } else {
     Local<Value> argv[2];
@@ -5097,8 +5103,11 @@ void InitCrypto(Handle<Object> target,
                 Handle<Value> unused,
                 Handle<Context> context,
                 void* priv) {
-  static uv_once_t init_once = UV_ONCE_INIT;
-  uv_once(&init_once, InitCryptoOnce);
+  // TODO-CODIUS: Switch back to using uv_once, instead of just calling
+  //              InitCryptoOnce()
+  // static uv_once_t init_once = UV_ONCE_INIT;
+  // uv_once(&init_once, InitCryptoOnce);
+  InitCryptoOnce();
 
   Environment* env = Environment::GetCurrent(context);
   SecureContext::Initialize(env, target);

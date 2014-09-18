@@ -14,6 +14,4 @@ export LINK=x86_64-nacl-g++
     --dest-os=linux \
     --shared-v8 \
     --shared-v8-includes=deps/v8/include \
-    --shared-v8-libpath=../deps/v8/out/nacl_ia32.release/lib.target \
-    --without-ssl
-    
+    --shared-v8-libpath=../deps/v8/out/nacl_ia32.release/lib.target

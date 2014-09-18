@@ -25,9 +25,14 @@
 #include "node_javascript.h"
 #include "node_version.h"
 
+#if HAVE_OPENSSL
+#include "node_crypto.h"
+#endif
+
 #include "codius_version.h"
 #include "env.h"
 #include "env-inl.h"
+#include "string_bytes.h"
 #include "util.h"
 #include "zlib.h"
 
@@ -1075,6 +1080,16 @@ enum encoding ParseEncoding(Isolate* isolate,
   }
 }
 
+Local<Value> Encode(Isolate* isolate,
+                    const void* buf,
+                    size_t len,
+                    enum encoding encoding) {
+  return StringBytes::Encode(isolate,
+                             static_cast<const char*>(buf),
+                             len,
+                             encoding);
+}
+
 void AppendExceptionLine(Environment* env,
                          Handle<Value> er,
                          Handle<Message> message) {
@@ -2116,6 +2131,12 @@ int Start(int argc, char** argv) {
   int exec_argc;
   const char** exec_argv;
   Init(&argc, const_cast<const char**>(argv), &exec_argc, &exec_argv);
+
+#if HAVE_OPENSSL
+  // V8 on Windows doesn't have a good source of entropy. Seed it from
+  // OpenSSL's pool.
+  V8::SetEntropySource(crypto::EntropySource);
+#endif
 
   int code;
   V8::Initialize();

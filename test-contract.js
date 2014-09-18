@@ -1,4 +1,3 @@
-
 var fs = require('fs');
 
 console.log('test contract running');
@@ -45,8 +44,10 @@ client.on('close', function() {
   console.log('Connection closed');
 });
 
-
+var crypto = require('crypto');
+var hash = crypto.createHash('sha512');
+hash.update('hello');
+var result = hash.digest('hex');
+console.log(result);
 
 //console.log(require('crypto').randomBytes(40).toString('hex'));
-
-//console.log(fs.readdirSync('/'));
