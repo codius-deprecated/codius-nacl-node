@@ -10,4 +10,5 @@ export LD_LIBRARY_PATH=LD_LIBRARY_PATH:deps/v8/out/ia32.release/lib.target
     --dest-os=linux \
     --shared-v8 \
     --shared-v8-includes=deps/v8/include \
-    --shared-v8-libpath=../deps/v8/out/ia32.release/lib.target 
+    --shared-v8-libpath=../deps/v8/out/ia32.release/lib.target \
+    --openssl-no-asm
