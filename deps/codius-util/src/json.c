@@ -220,7 +220,6 @@ int codius_parse_json_str(char *js, size_t len, char *buf, size_t buf_size) {
           printf("Insufficient buffer size: cannot copy message result.");
           abort();
         }
-        fwrite(js+t->start,1,t->end-t->start, stdout);
         strncpy (buf, js+t->start, t->end-t->start);
 
         free(tokens);

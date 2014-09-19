@@ -150,21 +150,28 @@ int RAND_poll(void)
   if (resp_len==-1) {
     return -errno;
   }
-  
-  unsigned char buf[ENTROPY_NEEDED];
-  int buf_len = codius_parse_json_str(resp_buf, resp_len, buf, ENTROPY_NEEDED);
+
+  unsigned char hex_buf[CODIUS_MAX_MESSAGE_SIZE];
+  codius_parse_json_str(resp_buf, resp_len, hex_buf, CODIUS_MAX_MESSAGE_SIZE);
 
   //hex to string
-  // char *src = buf; 
-  // char *dst = buf;
-  // char *end = buf + buf_len;
-  // unsigned int u;
-  // int new_len = 0;
-  // while (dst < end && sscanf(src, "%2x", &u) == 1) {
-  //   *dst++ = u;
-  //   src += 2;
-  //   ++new_len;
-  // }
+  unsigned char buf[ENTROPY_NEEDED];
+  char *src = hex_buf; 
+  char *dst = buf;
+  char *end = buf + ENTROPY_NEEDED;
+  unsigned int u;
+  int buf_len = 0;
+  while (dst < end && sscanf(src, "%2x", &u) == 1) {
+    *dst++ = u;
+    src += 2;
+    ++buf_len;
+  }
+  
+  if (buf_len!=ENTROPY_NEEDED) {
+  	printf("Failed to get ENTROPY_NEEDED for RAND_poll.");
+  	fflush(stdout);
+  	return 0;
+  }
 
   /* Make synchronous function call outside the sandbox.
 	   Return the number of characters written to resp_buf if

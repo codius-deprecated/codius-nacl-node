@@ -50,4 +50,4 @@ hash.update('hello');
 var result = hash.digest('hex');
 console.log(result);
 
-//console.log(require('crypto').randomBytes(40).toString('hex'));
+console.log(require('crypto').randomBytes(40).toString('hex'));

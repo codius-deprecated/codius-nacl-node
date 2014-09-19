@@ -64,8 +64,6 @@
 
 void OpenSSL_add_all_digests(void)
 	{
-		printf("OpenSSL_add_all_digests\n");
-		fflush(stdout);
 #ifndef OPENSSL_NO_MD4
 	EVP_add_digest(EVP_md4());
 #endif
