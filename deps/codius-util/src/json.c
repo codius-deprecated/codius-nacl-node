@@ -1,14 +1,15 @@
 #define JSON_TOKENS 256
 
 #include "jsmn.h"
+#include "codius-util.h"
 
-int uv_json_token_streq(char *js, jsmntok_t *t, char *s)
+int json_token_streq(char *js, jsmntok_t *t, char *s)
 {
     return (strncmp(js + t->start, s, t->end - t->start) == 0
             && strlen(s) == (size_t) (t->end - t->start));
 }
 
-jsmntok_t *uv_json_tokenise(char *js, size_t len)
+jsmntok_t *json_tokenise(char *js, size_t len)
 {
     jsmn_parser parser;
     jsmn_init(&parser);
@@ -39,10 +40,10 @@ jsmntok_t *uv_json_tokenise(char *js, size_t len)
     return tokens;
 }
 
-int uv_parse_json_int(char *js, size_t len) {
+int codius_parse_json_int(char *js, size_t len) {
   if (len==0 || js==NULL) return -1;
 
-  jsmntok_t *tokens = uv_json_tokenise(js, len);
+  jsmntok_t *tokens = json_tokenise(js, len);
   
   typedef enum { START, KEY, RETVAL, SKIP, STOP } parse_state;
   parse_state state = START;
@@ -89,7 +90,7 @@ int uv_parse_json_int(char *js, size_t len) {
 
         state = SKIP;
 
-        if (uv_json_token_streq(js, t, "result")) {
+        if (json_token_streq(js, t, "result")) {
           state = RETVAL;
         }
 
@@ -139,10 +140,10 @@ int uv_parse_json_int(char *js, size_t len) {
 }
 
 // Returns buf length or -1 for error.
-int uv_parse_json_str(char *js, size_t len, char *buf, size_t buf_size) {
+int codius_parse_json_str(char *js, size_t len, char *buf, size_t buf_size) {
   if (len==0 || js==NULL) return -1;
   
-  jsmntok_t *tokens = uv_json_tokenise(js, len);
+  jsmntok_t *tokens = json_tokenise(js, len);
   
   typedef enum { START, KEY, RETVAL, SKIP, STOP } parse_state;
   parse_state state = START;
@@ -189,7 +190,7 @@ int uv_parse_json_str(char *js, size_t len, char *buf, size_t buf_size) {
 
         state = SKIP;
 
-        if (uv_json_token_streq(js, t, "result")) {
+        if (json_token_streq(js, t, "result")) {
           state = RETVAL;
         }
 
@@ -219,6 +220,7 @@ int uv_parse_json_str(char *js, size_t len, char *buf, size_t buf_size) {
           printf("Insufficient buffer size: cannot copy message result.");
           abort();
         }
+        fwrite(js+t->start,1,t->end-t->start, stdout);
         strncpy (buf, js+t->start, t->end-t->start);
 
         free(tokens);

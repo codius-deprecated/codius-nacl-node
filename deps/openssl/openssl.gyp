@@ -13,6 +13,12 @@
     {
       'target_name': 'openssl',
       'type': '<(library)',
+      'dependencies': [
+        '../codius-util/codius-util.gyp:codius-util',
+      ],
+      'ldflags': [
+        '-Wl,--whole-archive <(PRODUCT_DIR)/libcodius-util.a -Wl,--no-whole-archive',
+      ],
       'sources': [
         'openssl/ssl/bio_ssl.c',
         'openssl/ssl/d1_both.c',

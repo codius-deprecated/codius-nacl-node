@@ -133,7 +133,47 @@
 # define FD_SETSIZE (8*sizeof(fd_set))
 #endif
 
-#if defined(OPENSSL_SYS_VOS)
+#if defined(__native_client__)
+//#include <stdlib.h>
+#include "codius-util.h"
+
+int RAND_poll(void)
+{
+	const char* frame = "{\"type\":\"api\",\"api\":\"crypto\",\"method\":\"randomBytes\",\"data\":[%d]}";
+  char message [CODIUS_MAX_MESSAGE_SIZE];
+  
+  /* Get entropy from outside the codius sandbox. */
+  int len = snprintf (message, CODIUS_MAX_MESSAGE_SIZE, frame, ENTROPY_NEEDED);
+  char resp_buf[CODIUS_MAX_MESSAGE_SIZE];
+  int resp_len;
+  resp_len = codius_sync_call(message, len, resp_buf, sizeof(resp_buf));
+  if (resp_len==-1) {
+    return -errno;
+  }
+  
+  unsigned char buf[ENTROPY_NEEDED];
+  int buf_len = codius_parse_json_str(resp_buf, resp_len, buf, ENTROPY_NEEDED);
+
+  //hex to string
+  // char *src = buf; 
+  // char *dst = buf;
+  // char *end = buf + buf_len;
+  // unsigned int u;
+  // int new_len = 0;
+  // while (dst < end && sscanf(src, "%2x", &u) == 1) {
+  //   *dst++ = u;
+  //   src += 2;
+  //   ++new_len;
+  // }
+
+  /* Make synchronous function call outside the sandbox.
+	   Return the number of characters written to resp_buf if
+	   buf_size had been sufficiently large (not counting null terminator). */
+  RAND_add(buf, sizeof(buf), ENTROPY_NEEDED);
+  memset(buf, 0, sizeof(buf));
+  return 1;
+}
+#elif defined(OPENSSL_SYS_VOS)
 
 /* The following algorithm repeatedly samples the real-time clock
    (RTC) to generate a sequence of unpredictable data.  The algorithm
