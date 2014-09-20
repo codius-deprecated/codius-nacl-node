@@ -30,22 +30,22 @@
       'src/js/dns.js',
       # 'src/js/domain.js',
       'src/js/events.js',
-      # 'src/js/freelist.js',
+      'src/js/freelist.js',
       'src/js/fs.js',
-      # 'src/js/http.js',
-      # 'src/js/_http_agent.js',
-      # 'src/js/_http_client.js',
-      # 'src/js/_http_common.js',
-      # 'src/js/_http_incoming.js',
-      # 'src/js/_http_outgoing.js',
-      # 'src/js/_http_server.js',
+      'src/js/http.js',
+      'src/js/_http_agent.js',
+      'src/js/_http_client.js',
+      'src/js/_http_common.js',
+      'src/js/_http_incoming.js',
+      'src/js/_http_outgoing.js',
+      'src/js/_http_server.js',
       # 'src/js/https.js',
       'src/js/module.js',
       'src/js/net.js',
-      # 'src/js/os.js',
+      'src/js/os.js',
       'src/js/path.js',
-      # 'src/js/punycode.js',
-      # 'src/js/querystring.js',
+      'src/js/punycode.js',
+      'src/js/querystring.js',
       # 'src/js/readline.js',
       # 'src/js/repl.js',
       'src/js/smalloc.js',
@@ -64,7 +64,7 @@
       # 'src/js/_tls_legacy.js',
       # 'src/js/_tls_wrap.js',
       # 'src/js/tty.js',
-      # 'src/js/url.js',
+      'src/js/url.js',
       'src/js/util.js',
       'src/js/vm.js',
       # 'src/js/zlib.js',
@@ -100,7 +100,7 @@
         'src/cpp/node_http_parser.cc',
         'src/cpp/node_javascript.cc',
         'src/cpp/node_main.cc',
-        # 'src/cpp/node_os.cc',
+        'src/cpp/node_os.cc',
         # 'src/cpp/node_v8.cc',
         # 'src/cpp/node_stat_watcher.cc',
         # 'src/cpp/node_watchdog.cc',
@@ -427,10 +427,10 @@
           ],
           'conditions': [
             [ 'node_use_dtrace=="false" and node_use_etw=="false"', {
-              # 'inputs': [ 'src/notrace_macros.py' ]
+              'inputs': [ 'src/notrace_macros.py' ]
             }],
             [ 'node_use_perfctr=="false"', {
-              # 'inputs': [ 'src/perfctr_macros.py' ]
+              'inputs': [ 'src/perfctr_macros.py' ]
             }]
           ],
           'action': [
