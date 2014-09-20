@@ -407,7 +407,7 @@ int uv__socket(int domain, int type, int protocol) {
     return -errno;
   }
 
-  sockfd = uv_parse_json_int(resp_buf, resp_len);
+  sockfd = codius_parse_json_int(resp_buf, resp_len);
 
   if (sockfd == -1)
     return -errno;

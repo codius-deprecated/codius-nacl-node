@@ -32,6 +32,9 @@
     {
       'target_name': 'libuv',
       'type': '<(uv_library)',
+      'dependencies': [
+        '../codius-util/codius-util.gyp:codius-util',
+      ],
       'include_dirs': [
         'include',
         'src/',
@@ -147,9 +150,6 @@
             # 'src/getaddrinfo.c',
             # 'src/getnameinfo.c',
             'src/internal.h',
-            'src/jsmn.c',
-            'src/jsmn.h',
-            'src/json.c',
             'src/loop.c',
             'src/loop-watcher.c',
             'src/pipe.c',

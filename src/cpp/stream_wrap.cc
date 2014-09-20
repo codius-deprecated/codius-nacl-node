@@ -31,6 +31,7 @@
 //#include "udp_wrap.h"
 #include "util.h"
 #include "util-inl.h"
+#include "codius-util.h"
 
 #include <stdlib.h>  // abort()
 #include <string.h>  // memcpy()
@@ -563,13 +564,14 @@ void StreamWrap::WriteUtf8String(const FunctionCallbackInfo<Value>& args) {
       abort();
     }
 
-    char resp_buf[UV_SYNC_MAX_MESSAGE_SIZE];
-    int resp_len;
-    resp_len = uv_sync_call(message, len, resp_buf, sizeof(resp_buf));
+    char *resp_buf;
+    size_t resp_len;
+    resp_len = codius_sync_call(message, len, resp_buf, &resp_len);
     if (resp_len==-1) {
       //TODO-CODIUS: handle error
     }
     //int ret = uv_parse_json_int(resp_buf, resp_len);
+    free(resp_buf);
   } else {
     assert(args[0]->IsObject());
     assert(args[1]->IsString());

@@ -21,6 +21,7 @@
 
 #include "uv.h"
 #include "internal.h"
+#include "codius-util.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -34,8 +35,6 @@
 #include <sys/un.h>
 #include <unistd.h>
 #include <limits.h> /* IOV_MAX */
-
-#include <codius-util.h>
 
 #if defined(__APPLE__)
 # include <sys/event.h>
@@ -550,9 +549,10 @@ start:
       printf("Error forming stream message.");
       abort();
     }
-    char resp_buf[UV_SYNC_MAX_MESSAGE_SIZE];
-    int resp_len;
-    n = uv_sync_call(message, len, resp_buf, sizeof(resp_buf));
+    char *resp_buf;
+    size_t resp_len;
+    n = codius_sync_call(message, len, resp_buf, &resp_len);
+    free(resp_buf);
     // if (resp_len==-1) {
     //   return -errno;
     // }
@@ -852,7 +852,7 @@ static void uv__read(uv_stream_t* stream) {
           //TODO-CODIUS: handle error
         }
 
-        nread = uv_parse_json_str(resp_buf, resp_len, buf.base, buf.len);
+        nread = codius_parse_json_str(resp_buf, resp_len, buf.base, buf.len);
 
         //hex to string
         char *src = buf.base; 

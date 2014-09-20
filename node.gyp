@@ -10,6 +10,7 @@
     'node_shared_http_parser%': 'false',
     'node_shared_cares%': 'false',
     'node_shared_libuv%': 'false',
+    'node_shared_codius_util%': 'false',
     'node_use_openssl%': 'true',
     'node_use_nacl%': 'true',
     'node_shared_openssl%': 'false',
@@ -305,6 +306,10 @@
 
         [ 'node_shared_libuv=="false"', {
           'dependencies': [ 'deps/uv/uv.gyp:libuv' ],
+        }],
+
+        [ 'node_shared_codius_util=="false"', {
+          'dependencies': [ 'deps/codius-util/codius-util.gyp:codius-util' ],
         }],
 
         [ 'OS=="win"', {

@@ -142,7 +142,7 @@ int uv__tcp_connect(uv_connect_t* req,
   if (resp_len==-1) {
     return -errno;
   }
-  r = uv_parse_json_int(resp_buf, resp_len);
+  r = codius_parse_json_int(resp_buf, resp_len);
 
   if (r == -1) {
     if (errno == EINPROGRESS)
