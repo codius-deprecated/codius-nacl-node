@@ -292,7 +292,7 @@
         }],
 
         [ 'node_shared_zlib=="false"', {
-          # 'dependencies': [ 'deps/zlib/zlib.gyp:zlib' ],
+          'dependencies': [ 'deps/zlib/zlib.gyp:zlib' ],
         }],
 
         [ 'node_shared_http_parser=="false"', {

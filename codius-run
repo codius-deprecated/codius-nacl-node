@@ -1,0 +1,11 @@
+#!/usr/bin/env node
+
+var Sandbox = require('./sandbox');
+var PassthroughApi = require('./lib/api/passthrough').PassthroughApi;
+
+var sandbox = new Sandbox({
+  api: PassthroughApi,
+  disableNaCl: process.env.NONACL || false
+});
+// console.log('Running file in Codius sandbox: ' + process.argv[2]);
+sandbox.run('', process.argv[2]);

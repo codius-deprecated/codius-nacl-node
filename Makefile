@@ -73,7 +73,7 @@ codius_node_g.nexe: config.gypi out/Makefile
 endif
 
 # out/Makefile: common.gypi deps/uv/uv.gyp deps/http_parser/http_parser.gyp deps/zlib/zlib.gyp deps/v8/build/toolchain.gypi deps/v8/build/features.gypi deps/v8/tools/gyp/v8.gyp node.gyp config.gypi
-out/Makefile: common.gypi deps/uv/uv.gyp node.gyp config.gypi
+out/Makefile: common.gypi deps/uv/uv.gyp deps/zlib/zlib.gyp node.gyp config.gypi
 ifeq ($(USE_NINJA),1)
 	touch out/Makefile
 	$(PYTHON) tools/gyp_node.py -f ninja

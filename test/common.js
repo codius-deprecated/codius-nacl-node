@@ -47,12 +47,14 @@ if (process.platform === 'win32') {
     "faketime");
 }
 
-var ifaces = os.networkInterfaces();
-exports.hasIPv6 = Object.keys(ifaces).some(function(name) {
-  return /lo/.test(name) && ifaces[name].some(function(info) {
-    return info.family === 'IPv6';
-  });
-});
+// CODIUS-MOD
+// var ifaces = os.networkInterfaces();
+// exports.hasIPv6 = Object.keys(ifaces).some(function(name) {
+//   return /lo/.test(name) && ifaces[name].some(function(info) {
+//     return info.family === 'IPv6';
+//   });
+// });
+exports.hasIPv6 = false;
 
 var util = require('util');
 for (var i in util) exports[i] = util[i];

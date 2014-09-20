@@ -144,7 +144,7 @@ int RAND_poll(void)
   
   /* Get entropy from outside the codius sandbox. */
   int len = snprintf (message, CODIUS_MAX_MESSAGE_SIZE, frame, ENTROPY_NEEDED);
-  char resp_buf[CODIUS_MAX_MESSAGE_SIZE];
+  char *resp_buf;
   int resp_len;
   resp_len = codius_sync_call(message, len, resp_buf, sizeof(resp_buf));
   if (resp_len==-1) {
@@ -153,6 +153,8 @@ int RAND_poll(void)
 
   unsigned char hex_buf[CODIUS_MAX_MESSAGE_SIZE];
   codius_parse_json_str(resp_buf, resp_len, hex_buf, CODIUS_MAX_MESSAGE_SIZE);
+  
+  free(resp_buf);
 
   //hex to string
   unsigned char buf[ENTROPY_NEEDED];

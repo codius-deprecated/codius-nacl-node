@@ -35,6 +35,8 @@
 #include <unistd.h>
 #include <limits.h> /* IOV_MAX */
 
+#include <codius-util.h>
+
 #if defined(__APPLE__)
 # include <sys/event.h>
 # include <sys/time.h>
