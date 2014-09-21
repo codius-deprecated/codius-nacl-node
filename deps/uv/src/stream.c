@@ -551,7 +551,7 @@ start:
     }
     char *resp_buf;
     size_t resp_len;
-    codius_sync_call(message, len, resp_buf, &resp_len);
+    codius_sync_call(message, len, &resp_buf, &resp_len);
     n = req->bufs[req->write_index].len;
     free(resp_buf);
     // if (resp_len==-1) {
@@ -853,27 +853,28 @@ static void uv__read(uv_stream_t* stream) {
           //TODO-CODIUS: handle error
         }
 
-        char hex_buf[buf.len*2];
+        char *hex_buf = (char*) calloc(buf.len*2, sizeof(char));
         jsmntype_t result_type = codius_parse_json_type(resp_buf, resp_len, "result");
         if (result_type == JSMN_STRING) {
           nread = codius_parse_json_str(resp_buf, resp_len, "result", hex_buf, buf.len*2);
+          
+          assert(nread >= 0);
+          assert(nread <= buf.len*2);
+
+          //hex to string
+          char *src = hex_buf; 
+          char *dst = buf.base;
+          char *end = buf.base + nread/2;
+          unsigned int u = 0;
+          while (dst < end && sscanf(src, "%2x", &u) == 1) {
+            *dst++ = u;
+            src += 2;
+          }
+  
+          nread = nread / 2;
         } else {
           nread = codius_parse_json_int(resp_buf, resp_len, "result");
         }
-
-        //hex to string
-        char *src = hex_buf; 
-        char *dst = buf.base;
-        char *end = buf.base + nread;
-        unsigned int u;
-        int new_len = 0;
-        while (dst < end && sscanf(src, "%2x", &u) == 1) {
-          *dst++ = u;
-          src += 2;
-          ++new_len;
-        }
-
-        nread = new_len;
 
         /* Return if nothing was read. */
         if (!nread) {

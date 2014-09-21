@@ -11,7 +11,7 @@ extern "C" {
 #endif
 
 int codius_sync_call(const char* request_buf, size_t request_len,
-                     char *response_buf, size_t *response_len);
+                     char **response_buf, size_t *response_len);
 
 /**
  * Get the type of the result field.

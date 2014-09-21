@@ -43,6 +43,8 @@ function Sandbox(opts) {
 	self._timeout = opts.timeout || 1000;
 	self._apiClass = opts.api || null;
 	self._disableNaCl = opts.disableNaCl || false;
+	self._enableGdb = opts.enableGdb || false;
+	self._enableValgrind = opts.enableValgrind || false;
 
 	self._native_client_child = null;
 	// self._ready = false;
@@ -61,7 +63,7 @@ Sandbox.prototype.run = function(manifest_hash, file_path) {
 	var self = this;
 
 	// Create new sandbox
-	self._native_client_child = spawnChildToRunCode(file_path, self._disableNaCl);
+	self._native_client_child = self.spawnChildToRunCode(file_path, self._disableNaCl);
 	self._native_client_child.on('exit', function(code){
 		self.emit('exit', code);
 	});
@@ -88,10 +90,20 @@ Sandbox.prototype.run = function(manifest_hash, file_path) {
 // 	return wrapped;
 // }
 
-function spawnChildToRunCode(code, disableNaCl) {
+Sandbox.prototype.spawnChildToRunCode = function (code, disableNaCl) {
 	var cmd = disableNaCl ? RUN_CONTRACT_COMMAND_NONACL : RUN_CONTRACT_COMMAND;
 	var args = disableNaCl ? RUN_CONTRACT_ARGS_NONACL.slice() : RUN_CONTRACT_ARGS.slice();
 	args.push(code);
+	
+	if (this._enableGdb) {
+		args.unshift(cmd);
+		args.unshift('localhost:4483');
+		cmd = 'gdbserver';
+	} else if (this._enableValgrind) {
+		args.unshift('--');
+		args.unshift(cmd);
+		cmd = 'valgrind';
+	}
 
 	var child = spawn(cmd, args, {
 	  stdio: [

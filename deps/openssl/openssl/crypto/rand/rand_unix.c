@@ -133,7 +133,7 @@
 # define FD_SETSIZE (8*sizeof(fd_set))
 #endif
 
-#if defined(__native_client__)
+#if defined(OPENSSL_SYS_CODIUS)
 //#include <stdlib.h>
 #include "codius-util.h"
 
@@ -145,14 +145,20 @@ int RAND_poll(void)
   /* Get entropy from outside the codius sandbox. */
   int len = snprintf (message, CODIUS_MAX_MESSAGE_SIZE, frame, ENTROPY_NEEDED);
   char *resp_buf;
-  int resp_len;
-  resp_len = codius_sync_call(message, len, resp_buf, sizeof(resp_buf));
-  if (resp_len==-1) {
-    return -errno;
+  size_t resp_len;
+  int call_result = codius_sync_call(message, len, &resp_buf, &resp_len);
+  if (call_result == -1) {
+    return 0;
   }
 
-  unsigned char hex_buf[CODIUS_MAX_MESSAGE_SIZE];
-  codius_parse_json_str(resp_buf, resp_len, "result", hex_buf, CODIUS_MAX_MESSAGE_SIZE);
+  unsigned char hex_buf[ENTROPY_NEEDED*2];
+  int parse_result = codius_parse_json_str(resp_buf, resp_len, "result", hex_buf, ENTROPY_NEEDED*2);
+  
+  if (parse_result == -1) {
+  	printf("Failed to parse outside response for RAND_poll.\n");
+  	fflush(stdout);
+  	return 0;
+  }
   
   free(resp_buf);
 
@@ -170,7 +176,7 @@ int RAND_poll(void)
   }
   
   if (buf_len!=ENTROPY_NEEDED) {
-  	printf("Failed to get ENTROPY_NEEDED for RAND_poll.");
+  	printf("Failed to get ENTROPY_NEEDED for RAND_poll.\n");
   	fflush(stdout);
   	return 0;
   }

@@ -176,60 +176,14 @@ void StreamWrap::OnRead(uv_stream_t* handle,
                         ssize_t nread,
                         const uv_buf_t* buf) {
   StreamWrap* wrap = static_cast<StreamWrap*>(handle->data);
-  // uv_handle_type type = UV_UNKNOWN_HANDLE;
+  uv_handle_type type = UV_UNKNOWN_HANDLE;
 
   // if (wrap->is_named_pipe_ipc() &&
   //     uv_pipe_pending_count(reinterpret_cast<uv_pipe_t*>(handle)) > 0) {
   //   type = uv_pipe_pending_type(reinterpret_cast<uv_pipe_t*>(handle));
   // }
 
-  // OnReadCommon(handle, nread, buf, type);
-
-  Environment* env = wrap->env();
-  HandleScope handle_scope(env->isolate());
-  Context::Scope context_scope(env->context());
-
-  // We should not be getting this callback if someone as already called
-  // Close() on the handle.
-  assert(wrap->persistent().IsEmpty() == false);
-
-  Local<Value> argv[] = {
-    Integer::New(env->isolate(), nread),
-    Undefined(env->isolate()),
-    Undefined(env->isolate())
-  };
-
-  if (nread < 0)  {
-    if (buf->base != NULL)
-      free(buf->base);
-    wrap->MakeCallback(env->onread_string(), ARRAY_SIZE(argv), argv);
-    return;
-  }
-
-  if (nread == 0) {
-    if (buf->base != NULL)
-      free(buf->base);
-    return;
-  }
-
-  char* base = static_cast<char*>(realloc(buf->base, nread));
-  assert(static_cast<size_t>(nread) <= buf->len);
-  argv[1] = Buffer::Use(env, base, nread);
-
-  Local<Object> pending_obj;
-
-  // TODO-CODIUS: Do something like uv_accept where we can accept a handle,
-  // wrap it and then put it in pending_obj.
-//  if (wrap->is_named_pipe_ipc() &&
-//      uv_pipe_pending_count(reinterpret_cast<uv_pipe_t*>(handle)) > 0) {
-//    type = uv_pipe_pending_type(reinterpret_cast<uv_pipe_t*>(handle));
-//  }
-
-  if (!pending_obj.IsEmpty()) {
-    argv[2] = pending_obj;
-  }
-
-  wrap->MakeCallback(env->onread_string(), ARRAY_SIZE(argv), argv);
+  OnReadCommon(handle, nread, buf, type);
 }
 
 
@@ -566,7 +520,7 @@ void StreamWrap::WriteUtf8String(const FunctionCallbackInfo<Value>& args) {
 
     char *resp_buf;
     size_t resp_len;
-    resp_len = codius_sync_call(message, len, resp_buf, &resp_len);
+    resp_len = codius_sync_call(message, len, &resp_buf, &resp_len);
     if (resp_len==-1) {
       //TODO-CODIUS: handle error
     }
@@ -604,7 +558,7 @@ void StreamWrap::SetBlocking(const FunctionCallbackInfo<Value>& args) {
 }
 
 void StreamWrap::AfterWrite(uv_write_t* req, int status) {
-  printf("AfterWrite\n");
+  printf("StreamWrap::AfterWrite\n");
   fflush(stdout);
   WriteWrap* req_wrap = ContainerOf(&WriteWrap::req_, req);
   StreamWrap* wrap = req_wrap->wrap();
@@ -782,6 +736,7 @@ void StreamWrapCallbacks::DoRead(uv_stream_t* handle,
                                  ssize_t nread,
                                  const uv_buf_t* buf,
                                  uv_handle_type pending) {
+  printf("StreamWrapCallbacks::DoRead with %d bytes\n", nread);
   Environment* env = wrap()->env();
   HandleScope handle_scope(env->isolate());
   Context::Scope context_scope(env->context());

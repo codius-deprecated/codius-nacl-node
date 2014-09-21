@@ -6,6 +6,7 @@ export AR=x86_64-nacl-ar
 export CC=x86_64-nacl-gcc
 export CXX=x86_64-nacl-g++
 export LINK=x86_64-nacl-g++
+export NONACL=0
 
 ./configure \
     --debug \

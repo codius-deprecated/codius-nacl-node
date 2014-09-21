@@ -19,7 +19,7 @@ const unsigned long CODIUS_MAGIC_BYTES = 0xC0D105FE;
    Return the number of characters written to resp_buf if
    buf_size had been sufficiently large (not counting null terminator). */
 int codius_sync_call(const char* request_buf, size_t request_len,
-                     char *response_buf, size_t *response_len) {
+                     char **response_buf, size_t *response_len) {
   size_t bytes_read;
   const int sync_fd = 3;
   int resp_len;
@@ -49,9 +49,9 @@ int codius_sync_call(const char* request_buf, size_t request_len,
   }
   *response_len = rpc_header.size;  
   
-  response_buf = (char*) malloc(*response_len);
+  *response_buf = (char*) malloc(*response_len);
   
-  bytes_read = read(sync_fd, response_buf, *response_len);
+  bytes_read = read(sync_fd, *response_buf, *response_len);
   if (bytes_read==-1) {
     perror("read()");
     printf("Error reading from fd %d\n", sync_fd);

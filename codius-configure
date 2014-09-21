@@ -1,6 +1,11 @@
 #!/bin/bash
 
 export LD_LIBRARY_PATH=LD_LIBRARY_PATH:deps/v8/out/ia32.release/lib.target
+export AR=ar
+export CC=gcc
+export CXX=g++
+export LINK=g++
+export NONACL=1
 
 ./configure \
     --debug \

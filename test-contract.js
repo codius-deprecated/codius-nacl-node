@@ -1,5 +1,20 @@
-var http = require('http');
-http.get("http://www.example.com/", function(res) {
+// var http = require('http');
+// http.get("http://www.example.com/", function(res) {
+//   console.log("Got response: " + res.statusCode);
+//   var buffer = '';
+//   res.setEncoding('utf8');
+//   res.on('data', function (chunk) {
+//     buffer += chunk;
+//   });
+//   res.on('end', function () {
+//     console.log('body', buffer);
+//   });
+// }).on('error', function(e) {
+//   console.log("Got error: " + e.message);
+// });
+
+var https = require('https');
+https.get("https://justmoon.net/", function(res) {
   console.log("Got response: " + res.statusCode);
   var buffer = '';
   res.setEncoding('utf8');
@@ -14,7 +29,6 @@ http.get("http://www.example.com/", function(res) {
 });
 
 // var fs = require('fs');
-// var ripple = require('ripple-lib');
 
 // console.log('test contract running');
 
@@ -68,6 +82,7 @@ http.get("http://www.example.com/", function(res) {
 
 // console.log(require('crypto').randomBytes(40).toString('hex'));
 
+// var ripple = require('ripple-lib');
 
 // var remote = new ripple.Remote({
 //   // see the API Reference for available options

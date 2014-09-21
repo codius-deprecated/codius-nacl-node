@@ -1106,6 +1106,9 @@
       # Microsoft's IIS, which seems to be ignoring whole ClientHello after
       # seeing this extension.
       'OPENSSL_NO_HEARTBEATS',
+      
+      # CODIUS-MOD We always want to build with codius enabled
+      'OPENSSL_SYS_CODIUS',
     ],
     'conditions': [
       ['OS=="win"', {

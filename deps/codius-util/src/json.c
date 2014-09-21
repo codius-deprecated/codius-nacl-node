@@ -149,9 +149,6 @@ int codius_parse_json_int(char *js, size_t len, const char *field_name) {
   if (len==0 || js==NULL) return -1;
 
   jsmntok_t *tokens = json_tokenise(js, len);
-  
-  typedef enum { START, KEY, RETVAL, SKIP, STOP } parse_state;
-  parse_state state = START;
 
   jsmntok_t t = codius_json_find_token(js, len, tokens, "result");
 
@@ -182,96 +179,26 @@ int codius_parse_json_str(char *js, size_t len, const char *field_name, char *bu
   if (len==0 || js==NULL) return -1;
   
   jsmntok_t *tokens = json_tokenise(js, len);
+
+  jsmntok_t t = codius_json_find_token(js, len, tokens, "result");
+
+  if (t.start == 0 && t.end == 0) {
+    printf("Invalid response: token '%s' not found.\n", field_name);
+    abort();
+  }
   
-  typedef enum { START, KEY, RETVAL, SKIP, STOP } parse_state;
-  parse_state state = START;
-
-  size_t object_tokens = 0;
-  size_t i, j;
-
-  for (i = 0, j = 1; j > 0; i++, j--) {
-    jsmntok_t * t = &tokens[i];
-
-    // Should never reach uninitialized tokens
-    assert(t->start != -1 && t->end != -1);
-
-    if (t->type == JSMN_ARRAY || t->type == JSMN_OBJECT)
-      j += t->size;
-
-    switch (state) {
-      case START:
-        if (t->type != JSMN_OBJECT) {
-          printf("Invalid response: root element must be an object.");
-          abort();
-        }
-
-        state = KEY;
-        object_tokens = t->size;
-
-        if (object_tokens == 0)
-          state = STOP;
-
-        if (object_tokens % 2 != 0) {
-          printf("Invalid response: object must have even number of children.");
-          abort();
-        }
-
-        break;
-
-      case KEY:
-        object_tokens--;
-
-        if (t->type != JSMN_STRING) {
-          printf("Invalid response: object keys must be strings.");
-          abort();
-        }
-
-        state = SKIP;
-
-        if (json_token_streq(js, t, "result")) {
-          state = RETVAL;
-        }
-
-        break;
-
-      case SKIP:
-        if (t->type != JSMN_STRING && t->type != JSMN_PRIMITIVE) {
-          printf("Invalid response: object values must be strings or primitives.");
-          abort();
-        }
-
-        object_tokens--;
-        state = KEY;
-
-        if (object_tokens == 0)
-          state = STOP;
-
-        break;
-
-      case RETVAL:
-        if (t->type != JSMN_STRING) {
-          printf("Invalid response: object values must be strings or primitives.");
-          abort();
-        }
-
-        if (buf_size<=t->end-t->start) {
-          printf("Insufficient buffer size: cannot copy %d byte message into %d byte buffer.", t->end-t->start, buf_size);
-          abort();
-        }
-        strncpy (buf, js+t->start, t->end-t->start);
-
-        free(tokens);
-        return strlen(buf);
-
-      case STOP:
-        // Just consume the tokens
-        break;
-
-      default:
-        printf("Invalid state %u", state);
-        abort();
-    }
+  if (t.type != JSMN_STRING) {
+    printf("Invalid response: object values must be strings or primitives.\n");
+    abort();
   }
 
-  return -1;
+  if (buf_size < t.end-t.start) {
+    printf("Insufficient buffer size: cannot copy %d byte message into %d byte buffer.\n", t.end-t.start, buf_size);
+    abort();
+  }
+  strncpy(buf, js+t.start, t.end-t.start);
+
+  free(tokens);
+
+  return t.end-t.start;
 }
