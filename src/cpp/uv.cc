@@ -19,6 +19,7 @@
 // OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
 // USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+#include "uv.h"
 #include "node.h"
 #include "env.h"
 #include "env-inl.h"
@@ -43,7 +44,8 @@ void ErrName(const FunctionCallbackInfo<Value>& args) {
   int err = args[0]->Int32Value();
   if (err >= 0)
     return env->ThrowError("err >= 0");
-  args.GetReturnValue().Set(OneByteString(env->isolate(), "TODO-CODIUS: Implement uv error names"));
+  const char* name = uv_err_name(err);
+  args.GetReturnValue().Set(OneByteString(env->isolate(), name));
 }
 
 
@@ -53,8 +55,11 @@ void Initialize(Handle<Object> target,
   Environment* env = Environment::GetCurrent(context);
   target->Set(FIXED_ONE_BYTE_STRING(env->isolate(), "errname"),
               FunctionTemplate::New(env->isolate(), ErrName)->GetFunction());
-  target->Set(FIXED_ONE_BYTE_STRING(env->isolate(), "UV_EOF"),
-              Integer::New(env->isolate(), -4095));
+#define V(name, _)                                                            \
+  target->Set(FIXED_ONE_BYTE_STRING(env->isolate(), "UV_" # name),            \
+              Integer::New(env->isolate(), UV_ ## name));
+  UV_ERRNO_MAP(V)
+#undef V
 }
 
 
