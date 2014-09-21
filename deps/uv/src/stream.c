@@ -551,7 +551,8 @@ start:
     }
     char *resp_buf;
     size_t resp_len;
-    n = codius_sync_call(message, len, resp_buf, &resp_len);
+    codius_sync_call(message, len, resp_buf, &resp_len);
+    n = req->bufs[req->write_index].len;
     free(resp_buf);
     // if (resp_len==-1) {
     //   return -errno;
@@ -837,10 +838,10 @@ static void uv__read(uv_stream_t* stream) {
     assert(uv__stream_fd(stream) >= 0);
     if (!is_ipc) {
       if (stream->type == UV_TCP) {
-        const char* frame = "{\"type\":\"api\",\"api\":\"net\",\"method\":\"read\",\"data\":[%d]}";
+        const char* frame = "{\"type\":\"api\",\"api\":\"net\",\"method\":\"read\",\"data\":[%d, %d]}";
         char message[UV_SYNC_MAX_MESSAGE_SIZE];
         int len;
-        len = snprintf (message, UV_SYNC_MAX_MESSAGE_SIZE, frame, uv__stream_fd(stream));
+        len = snprintf (message, UV_SYNC_MAX_MESSAGE_SIZE, frame, uv__stream_fd(stream), buf.len);
         if (len==-1) {
           printf("Error forming socket message.");
           abort();
@@ -852,10 +853,16 @@ static void uv__read(uv_stream_t* stream) {
           //TODO-CODIUS: handle error
         }
 
-        nread = codius_parse_json_str(resp_buf, resp_len, buf.base, buf.len);
+        char hex_buf[buf.len*2];
+        jsmntype_t result_type = codius_parse_json_type(resp_buf, resp_len, "result");
+        if (result_type == JSMN_STRING) {
+          nread = codius_parse_json_str(resp_buf, resp_len, "result", hex_buf, buf.len*2);
+        } else {
+          nread = codius_parse_json_int(resp_buf, resp_len, "result");
+        }
 
         //hex to string
-        char *src = buf.base; 
+        char *src = hex_buf; 
         char *dst = buf.base;
         char *end = buf.base + nread;
         unsigned int u;

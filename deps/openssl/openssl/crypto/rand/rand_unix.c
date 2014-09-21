@@ -152,7 +152,7 @@ int RAND_poll(void)
   }
 
   unsigned char hex_buf[CODIUS_MAX_MESSAGE_SIZE];
-  codius_parse_json_str(resp_buf, resp_len, hex_buf, CODIUS_MAX_MESSAGE_SIZE);
+  codius_parse_json_str(resp_buf, resp_len, "result", hex_buf, CODIUS_MAX_MESSAGE_SIZE);
   
   free(resp_buf);
 

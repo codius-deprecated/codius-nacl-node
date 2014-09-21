@@ -2350,7 +2350,7 @@ union uv_any_req {
 };
 #undef XX
 
-#define UV_SYNC_MAX_MESSAGE_SIZE 16384
+#define UV_SYNC_MAX_MESSAGE_SIZE 132096 // 129 KB
 
 struct uv_loop_s {
   /* User data - use this for whatever. */

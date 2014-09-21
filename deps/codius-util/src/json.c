@@ -40,11 +40,7 @@ jsmntok_t *json_tokenise(char *js, size_t len)
     return tokens;
 }
 
-int codius_parse_json_int(char *js, size_t len) {
-  if (len==0 || js==NULL) return -1;
-
-  jsmntok_t *tokens = json_tokenise(js, len);
-  
+jsmntok_t codius_json_find_token(char *js, size_t len, jsmntok_t* tokens, const char *field_name) {
   typedef enum { START, KEY, RETVAL, SKIP, STOP } parse_state;
   parse_state state = START;
 
@@ -90,7 +86,7 @@ int codius_parse_json_int(char *js, size_t len) {
 
         state = SKIP;
 
-        if (json_token_streq(js, t, "result")) {
+        if (json_token_streq(js, t, field_name)) {
           state = RETVAL;
         }
 
@@ -111,20 +107,7 @@ int codius_parse_json_int(char *js, size_t len) {
         break;
 
       case RETVAL:
-        if (t->type != JSMN_PRIMITIVE) {
-          printf("Invalid response: object values must be strings or primitives.");
-          abort();
-        }
-
-        char *end;
-        long int value = strtol(js+t->start, &end, 10);
-        if (end != (js+t->end)) {
-          printf("Invalid response: response is not an integer.");
-          abort();
-        }
-        
-        free(tokens);
-        return value;
+        return *t;
 
       case STOP:
         // Just consume the tokens
@@ -135,12 +118,67 @@ int codius_parse_json_int(char *js, size_t len) {
         abort();
     }
   }
+  
+  // token not found
+  jsmntok_t niltoken = { 0 };
+  return niltoken;
+}
 
-  return -1;
+jsmntype_t codius_parse_json_type(char *js, size_t len, const char *field_name) {
+  if (len==0 || js==NULL) return -1;
+
+  jsmntok_t *tokens = json_tokenise(js, len);
+  
+  typedef enum { START, KEY, RETVAL, SKIP, STOP } parse_state;
+  parse_state state = START;
+
+  size_t object_tokens = 0;
+  size_t i, j;
+
+  jsmntok_t t = codius_json_find_token(js, len, tokens, "result");
+
+  if (t.start == 0 && t.end == 0) {
+    printf("Invalid response: token '%s' not found.", field_name);
+    abort();
+  }
+  
+  return t.type;
+}
+
+int codius_parse_json_int(char *js, size_t len, const char *field_name) {
+  if (len==0 || js==NULL) return -1;
+
+  jsmntok_t *tokens = json_tokenise(js, len);
+  
+  typedef enum { START, KEY, RETVAL, SKIP, STOP } parse_state;
+  parse_state state = START;
+
+  jsmntok_t t = codius_json_find_token(js, len, tokens, "result");
+
+  if (t.start == 0 && t.end == 0) {
+    printf("Invalid response: token '%s' not found.", field_name);
+    abort();
+  }
+
+  if (t.type != JSMN_PRIMITIVE) {
+    printf("Invalid response: object values must be primitives.");
+    abort();
+  }
+
+  char *end;
+  long int value = strtol(js+t.start, &end, 10);
+  if (end != (js+t.end)) {
+    printf("Invalid response: response is not an integer.");
+    abort();
+  }
+  
+  free(tokens);
+  
+  return value;
 }
 
 // Returns buf length or -1 for error.
-int codius_parse_json_str(char *js, size_t len, char *buf, size_t buf_size) {
+int codius_parse_json_str(char *js, size_t len, const char *field_name, char *buf, size_t buf_size) {
   if (len==0 || js==NULL) return -1;
   
   jsmntok_t *tokens = json_tokenise(js, len);
@@ -217,7 +255,7 @@ int codius_parse_json_str(char *js, size_t len, char *buf, size_t buf_size) {
         }
 
         if (buf_size<=t->end-t->start) {
-          printf("Insufficient buffer size: cannot copy message result.");
+          printf("Insufficient buffer size: cannot copy %d byte message into %d byte buffer.", t->end-t->start, buf_size);
           abort();
         }
         strncpy (buf, js+t->start, t->end-t->start);

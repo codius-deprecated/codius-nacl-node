@@ -1,7 +1,8 @@
 var http = require('http');
-http.get("http://www.google.com/index.html", function(res) {
+http.get("http://www.example.com/", function(res) {
   console.log("Got response: " + res.statusCode);
   var buffer = '';
+  res.setEncoding('utf8');
   res.on('data', function (chunk) {
     buffer += chunk;
   });

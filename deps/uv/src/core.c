@@ -404,13 +404,13 @@ int uv__socket(int domain, int type, int protocol) {
   int resp_len;
   resp_len = uv_sync_call(message, len, resp_buf, sizeof(resp_buf));
   if (resp_len==-1) {
-    return -errno;
+    return UV_EINVAL;
   }
 
-  sockfd = codius_parse_json_int(resp_buf, resp_len);
+  sockfd = codius_parse_json_int(resp_buf, resp_len, "result");
 
   if (sockfd == -1)
-    return -errno;
+    return UV_EINVAL;
 
 #if defined(SO_NOSIGPIPE)
   {
