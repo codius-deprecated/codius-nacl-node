@@ -16,8 +16,7 @@ const unsigned long CODIUS_MAGIC_BYTES = 0xC0D105FE;
 
 
 /* Make synchronous function call outside the sandbox.
-   Return the number of characters written to resp_buf if
-   buf_size had been sufficiently large (not counting null terminator). */
+   Return response_len or -1 for error. */
 int codius_sync_call(const char* request_buf, size_t request_len,
                      char **response_buf, size_t *response_len) {
   size_t bytes_read;
@@ -42,7 +41,6 @@ int codius_sync_call(const char* request_buf, size_t request_len,
     return -1;
   }
   
-  // Do not read more than buf_size.
   if (rpc_header.size > CODIUS_MAX_RESPONSE_SIZE) {
     printf("Message too large from fd %d\n", sync_fd);
     abort();

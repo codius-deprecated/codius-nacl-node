@@ -339,52 +339,6 @@ int uv_is_active(const uv_handle_t* handle) {
   return uv__is_active(handle);
 }
 
-/* Make synchronous function call outside the sandbox.
-   Return the number of characters written to resp_buf if
-   buf_size had been sufficiently large (not counting null terminator). */
-int uv_sync_call(const char* message, size_t len, const char *resp_buf, size_t buf_size) {
-  size_t bytes_read;
-  const int sync_fd = 3;
-  int resp_len;
-
-  const unsigned long codius_magic_bytes = 0xC0D105FE;
-  codius_rpc_header_t rpc_header;
-  rpc_header.magic_bytes = codius_magic_bytes;
-  rpc_header.callback_id = 0;
-  rpc_header.size = len;
-  
-  if (-1==write(sync_fd, &rpc_header, sizeof(rpc_header)) ||
-      -1==write(sync_fd, message, strlen(message))) {
-    perror("write()");
-    printf("Error writing to fd %d\n", sync_fd);
-    return -1;
-  }
-  
-  bytes_read = read(sync_fd, &rpc_header, sizeof(rpc_header));
-  if (bytes_read==-1 || rpc_header.magic_bytes!=codius_magic_bytes) {
-    printf("Error reading from fd %d\n", sync_fd);
-    return -1;
-  }
-  
-  // Do not read more than buf_size.
-  if (rpc_header.size < buf_size) {
-    resp_len = rpc_header.size;  
-  } else {
-    resp_len = buf_size-1;
-  }
-  
-  bytes_read = read(sync_fd, resp_buf, resp_len);
-  if (bytes_read==-1) {
-    perror("read()");
-    printf("Error reading from fd %d\n", sync_fd);
-    fflush(stdout);
-
-    return -1;
-  }
-
-  return resp_len;
-}
-
 /* Open a socket in non-blocking close-on-exec mode, atomically if possible. */
 int uv__socket(int domain, int type, int protocol) {
   int sockfd;
@@ -400,14 +354,16 @@ int uv__socket(int domain, int type, int protocol) {
     abort();
   }
 
-  char resp_buf[UV_SYNC_MAX_MESSAGE_SIZE];
-  int resp_len;
-  resp_len = uv_sync_call(message, len, resp_buf, sizeof(resp_buf));
-  if (resp_len==-1) {
+  char *resp_buf;
+  size_t resp_len;
+  int result = codius_sync_call(message, len, &resp_buf, &resp_len);
+  if (result==-1) {
     return UV_EINVAL;
   }
 
   sockfd = codius_parse_json_int(resp_buf, resp_len, "result");
+  
+  free(resp_buf);
 
   if (sockfd == -1)
     return UV_EINVAL;
@@ -499,12 +455,13 @@ int uv__close(int fd) {
     printf("Error forming socket message.");
     abort();
   }
-  char resp_buf[UV_SYNC_MAX_MESSAGE_SIZE];
-  int resp_len;
-  resp_len = uv_sync_call(message, len, resp_buf, sizeof(resp_buf));
-  if (resp_len==-1) {
+  char *resp_buf;
+  size_t resp_len;
+  int result = codius_sync_call(message, len, &resp_buf, &resp_len);
+  if (result==-1) {
     //TODO-CODIUS: handle error
   }
+  free(resp_buf);
 
   return 0;
 }

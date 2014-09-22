@@ -3,8 +3,10 @@
 
 #include "jsmn.h"
 
-#define CODIUS_MAX_MESSAGE_SIZE 132096 // 129 KB
-#define CODIUS_MAX_RESPONSE_SIZE 268435456 // 256 MB
+// 129 KB
+#define CODIUS_MAX_MESSAGE_SIZE 132096
+// 256 MB
+#define CODIUS_MAX_RESPONSE_SIZE 268435456
 
 #ifdef __cplusplus
 extern "C" {

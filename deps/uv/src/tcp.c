@@ -21,6 +21,7 @@
 
 #include "uv.h"
 #include "internal.h"
+#include "codius-util.h"
 
 #include <stdlib.h>
 #include <unistd.h>
@@ -137,13 +138,12 @@ int uv__tcp_connect(uv_connect_t* req,
     printf("Error forming socket message.");
     abort();
   }
-  char resp_buf[UV_SYNC_MAX_MESSAGE_SIZE];
-  int resp_len;
-  resp_len = uv_sync_call(message, len, resp_buf, sizeof(resp_buf));
-  if (resp_len==-1) {
-    return -errno;
-  }
+  char *resp_buf;
+  size_t resp_len;
+  int result = codius_sync_call(message, len, &resp_buf, &resp_len);
+  assert(result != -1);
   r = codius_parse_json_int(resp_buf, resp_len, "result");
+  free(resp_buf);
 
   if (r == -1) {
     if (errno == EINPROGRESS)
@@ -158,7 +158,7 @@ int uv__tcp_connect(uv_connect_t* req,
       return -errno;
   }
 
-  // Successful uv_sync_call == UV_CONNECT event
+  // Successful codius_sync_call == UV_CONNECT event
   // Call the callback
   req->handle = (uv_stream_t*) handle;
   cb(req, 0);
