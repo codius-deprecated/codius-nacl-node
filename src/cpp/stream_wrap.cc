@@ -118,15 +118,7 @@ void StreamWrap::OnAlloc(uv_handle_t* handle,
                          uv_buf_t* buf) {
   StreamWrap* wrap = static_cast<StreamWrap*>(handle->data);
   assert(wrap->stream() == reinterpret_cast<uv_stream_t*>(handle));
-  //wrap->callbacks()->DoAlloc(handle, suggested_size, buf);
-  buf->base = static_cast<char*>(malloc(suggested_size));
-  buf->len = suggested_size;
-
-  if (buf->base == NULL && suggested_size > 0) {
-    FatalError(
-        "node::StreamWrap::OnAlloc(EventLoop::Handle*, size_t, EventLoop::Buffer*)",
-        "Out Of Memory");
-  }
+  wrap->callbacks()->DoAlloc(handle, suggested_size, buf);
 }
 
 
@@ -499,45 +491,8 @@ void StreamWrap::WriteAsciiString(const FunctionCallbackInfo<Value>& args) {
   WriteStringImpl<ASCII>(args);
 }
 
-// void StreamWrap::WriteUtf8String(const FunctionCallbackInfo<Value>& args) {
-//   WriteStringImpl<UTF8>(args);
-// }
 void StreamWrap::WriteUtf8String(const FunctionCallbackInfo<Value>& args) {
-  HandleScope scope(args.GetIsolate());
-  Environment* env = Environment::GetCurrent(args.GetIsolate());
-
-  StreamWrap* wrap = Unwrap<StreamWrap>(args.Holder());
-  if (wrap->stream()->type==UV_TCP) {
-    // Call socket outside the sandbox.
-    const char* frame = "{\"type\":\"api\",\"api\":\"net\",\"method\":\"write\",\"data\":[%d,\"test_message\"]}";
-    char message [UV_SYNC_MAX_MESSAGE_SIZE];
-    int len;
-    len = snprintf (message, UV_SYNC_MAX_MESSAGE_SIZE, frame, wrap->stream()->io_watcher.fd);
-    if (len==-1) {
-      printf("Error forming write message.\n");
-      abort();
-    }
-
-    char *resp_buf;
-    size_t resp_len;
-    resp_len = codius_sync_call(message, len, &resp_buf, &resp_len);
-    if (resp_len==-1) {
-      //TODO-CODIUS: handle error
-    }
-    //int ret = uv_parse_json_int(resp_buf, resp_len);
-    free(resp_buf);
-  } else {
-    assert(args[0]->IsObject());
-    assert(args[1]->IsString());
-  
-    node::Utf8Value name(args[1]);
-  
-    //write(wrap->handle_.GetFileDescriptor(), *name, name.length());
-    write(wrap->stream()->io_watcher.fd, *name, name.length());
-    // TODO-CODIUS: Do stuff...
-  }
-
-  args.GetReturnValue().Set(0);  // uv_pipe_connect() doesn't return errors.
+  WriteStringImpl<UTF8>(args);
 }
 
 
@@ -558,8 +513,6 @@ void StreamWrap::SetBlocking(const FunctionCallbackInfo<Value>& args) {
 }
 
 void StreamWrap::AfterWrite(uv_write_t* req, int status) {
-  printf("StreamWrap::AfterWrite\n");
-  fflush(stdout);
   WriteWrap* req_wrap = ContainerOf(&WriteWrap::req_, req);
   StreamWrap* wrap = req_wrap->wrap();
   Environment* env = wrap->env();
