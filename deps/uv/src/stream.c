@@ -529,35 +529,38 @@ start:
     //   }
     // }
     // while (n == -1 && errno == EINTR);
-    
-    /* Call Socket.write outside the codius sandbox. */
-    const char* frame = "{\"type\":\"api\",\"api\":\"net\",\"method\":\"write\",\"data\":[%d, \"%s\", \"%s\"]}";
-    const char* encoding = "hex";
-    char message [UV_SYNC_MAX_MESSAGE_SIZE];
-    int len;
-    char hex_buf[2*req->bufs[req->write_index].len];
-    
-    /* Encode message as hex */
-    int i;
-    for(i=0; i<req->bufs[req->write_index].len; i++) {
-      sprintf(hex_buf+i*2, "%02X", req->bufs[req->write_index].base[i]);
+    if (stream->type == UV_TCP) {
+      /* Call Socket.write outside the codius sandbox. */
+      const char* frame = "{\"type\":\"api\",\"api\":\"net\",\"method\":\"write\",\"data\":[%d, \"%.*s\", \"%s\"]}";
+      const char* encoding = "hex";
+      char message [UV_SYNC_MAX_MESSAGE_SIZE];
+      int len;
+      char hex_buf[2*req->bufs[req->write_index].len+1];
+      
+      /* Encode message as hex */
+      int i;
+      for(i=0; i<req->bufs[req->write_index].len; i++) {
+        sprintf(hex_buf+i*2, "%02X", (unsigned char) req->bufs[req->write_index].base[i]);
+      }
+  
+      len = snprintf (message, UV_SYNC_MAX_MESSAGE_SIZE, frame, 
+                      uv__stream_fd(stream), 2*req->bufs[req->write_index].len, hex_buf, encoding);
+      if (len==-1) {
+        printf("Error forming stream message.");
+        abort();
+      }
+      char *resp_buf;
+      size_t resp_len;
+      codius_sync_call(message, len, &resp_buf, &resp_len);
+      n = req->bufs[req->write_index].len;
+      free(resp_buf);
+      // if (resp_len==-1) {
+      //   return -errno;
+      // }
+      // r = uv_parse_json_int(resp_buf, resp_len);
+    } else {
+      n = write(uv__stream_fd(stream), req->bufs[req->write_index].base, req->bufs[req->write_index].len);
     }
-
-    len = snprintf (message, UV_SYNC_MAX_MESSAGE_SIZE, frame, 
-                    uv__stream_fd(stream), hex_buf, encoding);
-    if (len==-1) {
-      printf("Error forming stream message.");
-      abort();
-    }
-    char *resp_buf;
-    size_t resp_len;
-    codius_sync_call(message, len, &resp_buf, &resp_len);
-    n = req->bufs[req->write_index].len;
-    free(resp_buf);
-    // if (resp_len==-1) {
-    //   return -errno;
-    // }
-    // r = uv_parse_json_int(resp_buf, resp_len);
   }
 
   if (n < 0) {
@@ -846,12 +849,10 @@ static void uv__read(uv_stream_t* stream) {
           printf("Error forming socket message.");
           abort();
         }
-        char resp_buf[UV_SYNC_MAX_MESSAGE_SIZE];
-        int resp_len;
-        resp_len = uv_sync_call(message, len, resp_buf, sizeof(resp_buf));
-        if (resp_len==-1) {
-          //TODO-CODIUS: handle error
-        }
+        char *resp_buf;
+        size_t resp_len;
+        int result = codius_sync_call(message, len, &resp_buf, &resp_len);
+        assert(result != -1);
 
         char *hex_buf = (char*) calloc(buf.len*2, sizeof(char));
         jsmntype_t result_type = codius_parse_json_type(resp_buf, resp_len, "result");
@@ -874,11 +875,17 @@ static void uv__read(uv_stream_t* stream) {
           nread = nread / 2;
         } else {
           nread = codius_parse_json_int(resp_buf, resp_len, "result");
+          
+          if (nread < 0) {
+            errno = -nread;
+          }
         }
+        
+        free(hex_buf);
+        free(resp_buf);
 
         /* Return if nothing was read. */
         if (!nread) {
-          free(buf.base);
           return;
         }
       } else {
