@@ -67,21 +67,21 @@ using v8::Value;
 typedef class ReqWrap<uv_getaddrinfo_t> GetAddrInfoReqWrap;
 typedef class ReqWrap<uv_getnameinfo_t> GetNameInfoReqWrap;
 
-// static void IsIP(const FunctionCallbackInfo<Value>& args) {
-//   Environment* env = Environment::GetCurrent(args.GetIsolate());
-//   HandleScope scope(env->isolate());
+static void IsIP(const FunctionCallbackInfo<Value>& args) {
+  Environment* env = Environment::GetCurrent(args.GetIsolate());
+  HandleScope scope(env->isolate());
 
-//   node::Utf8Value ip(args[0]);
-//   char address_buffer[sizeof(struct in6_addr)];
+  node::Utf8Value ip(args[0]);
+  char address_buffer[sizeof(struct in6_addr)];
 
-//   int rc = 0;
-//   if (uv_inet_pton(AF_INET, *ip, &address_buffer) == 0)
-//     rc = 4;
-//   else if (uv_inet_pton(AF_INET6, *ip, &address_buffer) == 0)
-//     rc = 6;
+  int rc = 0;
+  if (uv_inet_pton(AF_INET, *ip, &address_buffer) == 0)
+    rc = 4;
+  else if (uv_inet_pton(AF_INET6, *ip, &address_buffer) == 0)
+    rc = 6;
 
-//   args.GetReturnValue().Set(rc);
-// }
+  args.GetReturnValue().Set(rc);
+}
 
 // void AfterGetAddrInfo(uv_getaddrinfo_t* req, int status, struct addrinfo* res) {
 //   GetAddrInfoReqWrap* req_wrap = static_cast<GetAddrInfoReqWrap*>(req->data);
@@ -269,7 +269,7 @@ static void Initialize(Handle<Object> target,
 
   // NODE_SET_METHOD(target, "getaddrinfo", GetAddrInfo);
   // NODE_SET_METHOD(target, "getnameinfo", GetNameInfo);
-  // NODE_SET_METHOD(target, "isIP", IsIP);
+  NODE_SET_METHOD(target, "isIP", IsIP);
 
   // NODE_SET_METHOD(target, "strerror", StrError);
   // NODE_SET_METHOD(target, "getServers", GetServers);

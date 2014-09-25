@@ -68,7 +68,7 @@ static size_t uv__write_req_size(uv_write_t* req);
 void uv__stream_init(uv_loop_t* loop,
                      uv_stream_t* stream,
                      uv_handle_type type) {
-  int err;
+  //int err;
 
   uv__handle_init(loop, (uv_handle_t*)stream, type);
   stream->read_cb = NULL;
@@ -352,36 +352,36 @@ int uv_listen(uv_stream_t* stream, int backlog, uv_connection_cb cb) {
 }
 
 
-// static void uv__drain(uv_stream_t* stream) {
-//   uv_shutdown_t* req;
-//   int err;
+static void uv__drain(uv_stream_t* stream) {
+  uv_shutdown_t* req;
+  int err;
 
-//   assert(QUEUE_EMPTY(&stream->write_queue));
-//   uv__io_stop(stream->loop, &stream->io_watcher, UV__POLLOUT);
-//   uv__stream_osx_interrupt_select(stream);
+  assert(QUEUE_EMPTY(&stream->write_queue));
+  uv__io_stop(stream->loop, &stream->io_watcher, UV__POLLOUT);
+  uv__stream_osx_interrupt_select(stream);
 
-//   /* Shutdown? */
-//   if ((stream->flags & UV_STREAM_SHUTTING) &&
-//       !(stream->flags & UV_CLOSING) &&
-//       !(stream->flags & UV_STREAM_SHUT)) {
-//     assert(stream->shutdown_req);
+  /* Shutdown? */
+  if ((stream->flags & UV_STREAM_SHUTTING) &&
+      !(stream->flags & UV_CLOSING) &&
+      !(stream->flags & UV_STREAM_SHUT)) {
+    assert(stream->shutdown_req);
 
-//     req = stream->shutdown_req;
-//     stream->shutdown_req = NULL;
-//     stream->flags &= ~UV_STREAM_SHUTTING;
-//     uv__req_unregister(stream->loop, req);
+    req = stream->shutdown_req;
+    stream->shutdown_req = NULL;
+    stream->flags &= ~UV_STREAM_SHUTTING;
+    uv__req_unregister(stream->loop, req);
 
-//     err = 0;
-//     if (shutdown(uv__stream_fd(stream), SHUT_WR))
-//       err = -errno;
+    err = 0;
+    if (shutdown(uv__stream_fd(stream), SHUT_WR))
+      err = -errno;
 
-//     if (err == 0)
-//       stream->flags |= UV_STREAM_SHUT;
+    if (err == 0)
+      stream->flags |= UV_STREAM_SHUT;
 
-//     if (req->cb != NULL)
-//       req->cb(req, err);
-//   }
-// }
+    if (req->cb != NULL)
+      req->cb(req, err);
+  }
+}
 
 
 static size_t uv__write_req_size(uv_write_t* req) {
@@ -805,7 +805,7 @@ static void uv__stream_eof(uv_stream_t* stream, const uv_buf_t* buf) {
 
 static void uv__read(uv_stream_t* stream) {
   uv_buf_t buf;
-  ssize_t nread;
+  ssize_t nread=0;
   struct msghdr msg;
   char cmsg_space[CMSG_SPACE(UV__CMSG_FD_SIZE)];
   int count;
@@ -919,6 +919,8 @@ static void uv__read(uv_stream_t* stream) {
           uv__io_start(stream->loop, &stream->io_watcher, UV__POLLIN);
           uv__stream_osx_interrupt_select(stream);
         }
+        //TODO-CODIUS: Since we do nonblocking reads instead of polling,
+        //             we are calling read_cb with nread=0 a lot. Is that ok? 
         stream->read_cb(stream, 0, &buf);
       } else {
         /* Error. User should call uv_close(). */
@@ -1027,15 +1029,14 @@ static void uv__stream_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
   if (uv__stream_fd(stream) == -1)
     return;  /* read_cb closed stream. */
 
-  // TODO-CODIUS: Enable async writes?
-  // if (events & (UV__POLLOUT | UV__POLLERR | UV__POLLHUP)) {
-  //   uv__write(stream);
-  //   uv__write_callbacks(stream);
+  if (events & (UV__POLLOUT | UV__POLLERR | UV__POLLHUP)) {
+    uv__write(stream);
+    uv__write_callbacks(stream);
 
-  //   /* Write queue drained. */
-  //   if (QUEUE_EMPTY(&stream->write_queue))
-  //     uv__drain(stream);
-  // }
+    /* Write queue drained. */
+    if (QUEUE_EMPTY(&stream->write_queue))
+      uv__drain(stream);
+  }
 }
 
 

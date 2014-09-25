@@ -689,7 +689,6 @@ void StreamWrapCallbacks::DoRead(uv_stream_t* handle,
                                  ssize_t nread,
                                  const uv_buf_t* buf,
                                  uv_handle_type pending) {
-  printf("StreamWrapCallbacks::DoRead with %d bytes\n", nread);
   Environment* env = wrap()->env();
   HandleScope handle_scope(env->isolate());
   Context::Scope context_scope(env->context());
