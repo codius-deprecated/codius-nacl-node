@@ -21,7 +21,8 @@
 
 var Transform = require('_stream_transform');
 
-var binding = process.binding('zlib');
+//CODIUS-MOD: No zlib wrap
+var binding = {} //process.binding('zlib');
 var util = require('util');
 var assert = require('assert').ok;
 

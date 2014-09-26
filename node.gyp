@@ -64,11 +64,11 @@
       'src/js/_tls_common.js',
       # 'src/js/_tls_legacy.js',
       'src/js/_tls_wrap.js',
-      # 'src/js/tty.js',
+      'src/js/tty.js',
       'src/js/url.js',
       'src/js/util.js',
       'src/js/vm.js',
-      # 'src/js/zlib.js',
+      'src/js/zlib.js',
     ],
   },
 

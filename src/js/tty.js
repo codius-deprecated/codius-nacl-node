@@ -21,8 +21,9 @@
 
 var inherits = require('util').inherits;
 var net = require('net');
-var TTY = process.binding('tty_wrap').TTY;
-var isTTY = process.binding('tty_wrap').isTTY;
+//CODIUS-MOD: No tty_wrap
+var TTY = {} //process.binding('tty_wrap').TTY;
+var isTTY = function() {} //process.binding('tty_wrap').isTTY;
 var util = require('util');
 
 var errnoException = util._errnoException;

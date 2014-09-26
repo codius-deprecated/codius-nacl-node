@@ -130,9 +130,9 @@ void uv_close(uv_handle_t* handle, uv_close_cb close_cb) {
   //   uv__async_close((uv_async_t*)handle);
   //   break;
 
-  // case UV_TIMER:
-  //   uv__timer_close((uv_timer_t*)handle);
-  //   break;
+  case UV_TIMER:
+    uv__timer_close((uv_timer_t*)handle);
+    break;
 
   // case UV_PROCESS:
   //   uv__process_close((uv_process_t*)handle);
