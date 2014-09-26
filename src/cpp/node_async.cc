@@ -75,11 +75,11 @@ void AsyncAfter(uv_work_t* req, int something, const char *buf, size_t buf_len)
       FatalException(try_catch);
   }
 
-  //data->callback.Dispose();
+  // data->callback.Dispose();
 
-  //delete request;
   delete req;
   
+  delete data;
                                                                 
   // HandleScope scope;
 
@@ -102,7 +102,6 @@ void AsyncAfter(uv_work_t* req, int something, const char *buf, size_t buf_len)
   // }
 
   // request->callback.Dispose();
-
   // delete request;
 }
                           

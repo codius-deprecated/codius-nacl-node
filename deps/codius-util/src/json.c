@@ -141,8 +141,12 @@ jsmntype_t codius_parse_json_type(char *js, size_t len, const char *field_name) 
     printf("Invalid response: token '%s' not found.", field_name);
     abort();
   }
+
+  jsmntype_t type = t.type;
+
+  free(tokens);
   
-  return t.type;
+  return type;
 }
 
 int codius_parse_json_int(char *js, size_t len, const char *field_name) {
