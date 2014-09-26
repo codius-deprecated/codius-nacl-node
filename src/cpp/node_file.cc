@@ -163,15 +163,26 @@ static int Sync_Call(Environment* env, const char* func,
   }
   
   char resp_buf[rpc_header.size];
-  bytes_read = read (fd, &resp_buf, sizeof(resp_buf));
+  char *p_resp=resp_buf;
+  bytes_read = 0;
+  int to_read = sizeof(resp_buf);
+  do {
+    bytes_read = read(fd, p_resp, to_read);
+    p_resp+=bytes_read;
+    to_read-=bytes_read;
+  } while (to_read > 0);
+
+  assert(to_read==0);
+
   Local<String> response_str = String::NewFromUtf8(env->isolate(), resp_buf, 
                                                    String::kNormalString,
                                                    sizeof(resp_buf));
-  
+
   // Parse the response.
   Handle<Function> JSON_parse = Handle<Function>::Cast(JSON->Get(
                                   String::NewFromUtf8(env->isolate(),
                                                       "parse")));
+
   Local<Value> parse_args[] = { response_str };
   *response = Handle<Object> (JSON_parse->Call(JSON, 1, parse_args)->ToObject());
   Handle<Value> resp_err = (*response)->Get(String::NewFromUtf8(env->isolate(),
@@ -772,7 +783,8 @@ static void Read(const FunctionCallbackInfo<Value>& args) {
     
     /* Copy the read str to buffer. */
     String::Utf8Value data(results->Get(0)->ToString());
-    strcpy (buffer_data, *data);
+    assert(buffer_length >= data.length());
+    strncpy (buffer_data, *data, data.length());
     
     /* Return bytesRead */
     args.GetReturnValue().Set(results->Get(1));
