@@ -102,6 +102,7 @@ function onlookup(err, addresses) {
 // lookup(hostname, [options,] callback)
 exports.lookup = function lookup(hostname, options, callback) {
   var codius = process.binding('async');
+
   var message = {
     type:'api',
     api:'dns',
@@ -113,6 +114,16 @@ exports.lookup = function lookup(hostname, options, callback) {
     // }]
     data: [ hostname, options.family ]
   };
+
+  // Parse arguments
+  if (hostname && typeof hostname !== 'string') {
+    throw TypeError('invalid arguments: hostname must be a string or falsey');
+  } else if (typeof options === 'function') {
+    callback = options;
+    message.data.pop();
+  } else if (typeof callback !== 'function') {
+    throw TypeError('invalid arguments: callback must be passed');
+  }
 
   codius.postMessage(message, function () {
     var args = arguments[1];

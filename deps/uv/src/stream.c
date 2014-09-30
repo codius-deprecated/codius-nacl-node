@@ -194,70 +194,73 @@ void uv__stream_destroy(uv_stream_t* stream) {
 // }
 
 
-// #if defined(UV_HAVE_KQUEUE)
-// # define UV_DEC_BACKLOG(w) w->rcount--;
-// #else
-// # define UV_DEC_BACKLOG(w) /* no-op */
-// #endif /* defined(UV_HAVE_KQUEUE) */
+#if defined(UV_HAVE_KQUEUE)
+# define UV_DEC_BACKLOG(w) w->rcount--;
+#else
+# define UV_DEC_BACKLOG(w) /* no-op */
+#endif /* defined(UV_HAVE_KQUEUE) */
 
 
-// void uv__server_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
-//   uv_stream_t* stream;
-//   int err;
+void uv__server_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
+  uv_stream_t* stream;
+  int err;
 
-//   stream = container_of(w, uv_stream_t, io_watcher);
-//   assert(events == UV__POLLIN);
-//   assert(stream->accepted_fd == -1);
-//   assert(!(stream->flags & UV_CLOSING));
+  stream = container_of(w, uv_stream_t, io_watcher);
+  assert(events == UV__POLLIN);
+  assert(stream->accepted_fd == -1);
+  assert(!(stream->flags & UV_CLOSING));
 
-//   uv__io_start(stream->loop, &stream->io_watcher, UV__POLLIN);
+  uv__io_start(stream->loop, &stream->io_watcher, UV__POLLIN);
 
-//   /* connection_cb can close the server socket while we're
-//    * in the loop so check it on each iteration.
-//    */
-//   while (uv__stream_fd(stream) != -1) {
-//     assert(stream->accepted_fd == -1);
+  /* connection_cb can close the server socket while we're
+   * in the loop so check it on each iteration.
+   */
+  while (uv__stream_fd(stream) != -1) {
+    assert(stream->accepted_fd == -1);
 
-// #if defined(UV_HAVE_KQUEUE)
-//     if (w->rcount <= 0)
-//       return;
-// #endif /* defined(UV_HAVE_KQUEUE) */
+#if defined(UV_HAVE_KQUEUE)
+    if (w->rcount <= 0)
+      return;
+#endif /* defined(UV_HAVE_KQUEUE) */
 
-//     err = uv__accept(uv__stream_fd(stream));
-//     if (err < 0) {
-//       if (err == -EAGAIN || err == -EWOULDBLOCK)
-//         return;  /* Not an error. */
+    err = uv__accept(uv__stream_fd(stream));
+    if (err < 0) {
+      if (err == -EAGAIN || err == -EWOULDBLOCK)
+        return;  /* Not an error. */
 
-//       if (err == -ECONNABORTED)
-//         continue;  /* Ignore. Nothing we can do about that. */
+      if (err == -ECONNABORTED)
+        continue;  /* Ignore. Nothing we can do about that. */
 
-//       if (err == -EMFILE || err == -ENFILE) {
-//         err = uv__emfile_trick(loop, uv__stream_fd(stream));
-//         if (err == -EAGAIN || err == -EWOULDBLOCK)
-//           break;
-//       }
+      if (err == -EMFILE || err == -ENFILE) {
+        assert(0);
+        break;
+        //CODIUS-MOD: Not supporting uv__emfile_trick()
+        // err = uv__emfile_trick(loop, uv__stream_fd(stream));
+        // if (err == -EAGAIN || err == -EWOULDBLOCK)
+        //   break;
+      }
 
-//       stream->connection_cb(stream, err);
-//       continue;
-//     }
+      stream->connection_cb(stream, err);
+      continue;
+    }
 
-//     UV_DEC_BACKLOG(w)
-//     stream->accepted_fd = err;
-//     stream->connection_cb(stream, 0);
+    UV_DEC_BACKLOG(w)
+    stream->accepted_fd = err;
+    stream->connection_cb(stream, 0);
 
-//     if (stream->accepted_fd != -1) {
-//       /* The user hasn't yet accepted called uv_accept() */
-//       uv__io_stop(loop, &stream->io_watcher, UV__POLLIN);
-//       return;
-//     }
+    if (stream->accepted_fd != -1) {
+      /* The user hasn't yet accepted called uv_accept() */
+      uv__io_stop(loop, &stream->io_watcher, UV__POLLIN);
+      return;
+    }
 
-//     if (stream->type == UV_TCP && (stream->flags & UV_TCP_SINGLE_ACCEPT)) {
-//       /* Give other processes a chance to accept connections. */
-//       struct timespec timeout = { 0, 1 };
-//       nanosleep(&timeout, NULL);
-//     }
-//   }
-// }
+    if (stream->type == UV_TCP && (stream->flags & UV_TCP_SINGLE_ACCEPT)) {
+      /* Give other processes a chance to accept connections. */
+      struct timespec timeout = { 0, 1 };
+      nanosleep(&timeout, NULL);
+    }
+  }
+}
 
 
 #undef UV_DEC_BACKLOG
@@ -332,21 +335,21 @@ int uv_listen(uv_stream_t* stream, int backlog, uv_connection_cb cb) {
   int err;
 
   err = -EINVAL;
-  // switch (stream->type) {
-  // case UV_TCP:
-  //   err = uv_tcp_listen((uv_tcp_t*)stream, backlog, cb);
-  //   break;
+  switch (stream->type) {
+  case UV_TCP:
+    err = uv_tcp_listen((uv_tcp_t*)stream, backlog, cb);
+    break;
 
   // case UV_NAMED_PIPE:
   //   err = uv_pipe_listen((uv_pipe_t*)stream, backlog, cb);
   //   break;
 
-  // default:
-  //   assert(0);
-  // }
+  default:
+    assert(0);
+  }
 
-  // if (err == 0)
-  //   uv__handle_start(stream);
+  if (err == 0)
+    uv__handle_start(stream);
 
   return err;
 }
@@ -458,7 +461,6 @@ static void uv__write(uv_stream_t* stream) {
   ssize_t n;
 
 start:
-
   assert(uv__stream_fd(stream) >= 0);
 
   if (QUEUE_EMPTY(&stream->write_queue))
@@ -806,10 +808,10 @@ static void uv__stream_eof(uv_stream_t* stream, const uv_buf_t* buf) {
 static void uv__read(uv_stream_t* stream) {
   uv_buf_t buf;
   ssize_t nread=0;
-  struct msghdr msg;
-  char cmsg_space[CMSG_SPACE(UV__CMSG_FD_SIZE)];
+  // struct msghdr msg;
+  // char cmsg_space[CMSG_SPACE(UV__CMSG_FD_SIZE)];
   int count;
-  int err;
+  // int err;
   int is_ipc;
 
   stream->flags &= ~UV_STREAM_READ_PARTIAL;
@@ -883,11 +885,6 @@ static void uv__read(uv_stream_t* stream) {
         
         free(hex_buf);
         free(resp_buf);
-
-        /* Return if nothing was read. */
-        if (!nread) {
-          return;
-        }
       } else {
         do {
           nread = read(uv__stream_fd(stream), buf.base, buf.len);
@@ -922,6 +919,7 @@ static void uv__read(uv_stream_t* stream) {
         //CODIUS-MOD: Since we do nonblocking reads instead of polling,
         //            we would be calling read_cb with nread=0 a lot.
         //stream->read_cb(stream, 0, &buf);
+        free(buf.base);
       } else {
         /* Error. User should call uv_close(). */
         stream->read_cb(stream, -errno, &buf);

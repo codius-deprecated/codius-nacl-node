@@ -63,6 +63,7 @@ int uv__tcp_bind(uv_tcp_t* tcp,
                  unsigned int flags) {
   int err;
   int on;
+  int r;
 
   /* Cannot set IPv6-only mode on non-IPv6 socket. */
   if ((flags & UV_TCP_IPV6ONLY) && addr->sa_family != AF_INET6)
@@ -74,27 +75,49 @@ int uv__tcp_bind(uv_tcp_t* tcp,
   if (err)
     return err;
 
-  on = 1;
-  if (setsockopt(tcp->io_watcher.fd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)))
-    return -errno;
+//   on = 1;
+//   if (setsockopt(tcp->io_watcher.fd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)))
+//     return -errno;
 
-#ifdef IPV6_V6ONLY
-  if (addr->sa_family == AF_INET6) {
-    on = (flags & UV_TCP_IPV6ONLY) != 0;
-    if (setsockopt(tcp->io_watcher.fd,
-                   IPPROTO_IPV6,
-                   IPV6_V6ONLY,
-                   &on,
-                   sizeof on) == -1) {
-      return -errno;
-    }
+// #ifdef IPV6_V6ONLY
+//   if (addr->sa_family == AF_INET6) {
+//     on = (flags & UV_TCP_IPV6ONLY) != 0;
+//     if (setsockopt(tcp->io_watcher.fd,
+//                    IPPROTO_IPV6,
+//                    IPV6_V6ONLY,
+//                    &on,
+//                    sizeof on) == -1) {
+//       return -errno;
+//     }
+//   }
+// #endif
+
+  //CODIUS-MOD: Replace 'bind' syscall with call to create server outside the sandbox.
+  // errno = 0;
+  // if (bind(tcp->io_watcher.fd, addr, addrlen) && errno != EADDRINUSE)
+  //   return -errno;
+  // tcp->delayed_error = -errno;
+
+  // TODO-CODIUS: We're about to cast addr to a sockaddr_in, which is only possible
+  //              if the family is IPv4. For IPv6 that next section will have to
+  //              be different.
+  assert(addr->sa_family == AF_INET);
+
+  const char* frame = "{\"type\":\"api\",\"api\":\"net\",\"method\":\"bind\",\"data\":[%d, %d, %d, %d]}";
+  char message [UV_SYNC_MAX_MESSAGE_SIZE];
+  int len;
+  len = snprintf (message, UV_SYNC_MAX_MESSAGE_SIZE, frame, tcp->io_watcher.fd, addr->sa_family, 
+                  ((struct sockaddr_in*)addr)->sin_addr.s_addr, ((struct sockaddr_in*)addr)->sin_port);
+  if (len==-1) {
+    printf("Error forming socket message.");
+    abort();
   }
-#endif
-
-  errno = 0;
-  if (bind(tcp->io_watcher.fd, addr, addrlen) && errno != EADDRINUSE)
-    return -errno;
-  tcp->delayed_error = -errno;
+  char *resp_buf;
+  size_t resp_len;
+  int result = codius_sync_call(message, len, &resp_buf, &resp_len);
+  assert(result != -1);
+  r = codius_parse_json_int(resp_buf, resp_len, "result");
+  free(resp_buf);
 
   if (addr->sa_family == AF_INET6)
     tcp->flags |= UV_HANDLE_IPV6;
@@ -218,36 +241,37 @@ int uv_tcp_getpeername(const uv_tcp_t* handle,
 }
 
 
-// int uv_tcp_listen(uv_tcp_t* tcp, int backlog, uv_connection_cb cb) {
-//   static int single_accept = -1;
-//   int err;
+int uv_tcp_listen(uv_tcp_t* tcp, int backlog, uv_connection_cb cb) {
+  static int single_accept = -1;
+  int err;
 
-//   if (tcp->delayed_error)
-//     return tcp->delayed_error;
+  if (tcp->delayed_error)
+    return tcp->delayed_error;
 
-//   if (single_accept == -1) {
-//     const char* val = getenv("UV_TCP_SINGLE_ACCEPT");
-//     single_accept = (val != NULL && atoi(val) != 0);  /* Off by default. */
-//   }
+  if (single_accept == -1) {
+    const char* val = getenv("UV_TCP_SINGLE_ACCEPT");
+    single_accept = (val != NULL && atoi(val) != 0);  /* Off by default. */
+  }
 
-//   if (single_accept)
-//     tcp->flags |= UV_TCP_SINGLE_ACCEPT;
+  if (single_accept)
+    tcp->flags |= UV_TCP_SINGLE_ACCEPT;
 
-//   err = maybe_new_socket(tcp, AF_INET, UV_STREAM_READABLE);
-//   if (err)
-//     return err;
+  err = maybe_new_socket(tcp, AF_INET, UV_STREAM_READABLE);
+  if (err)
+    return err;
 
-//   if (listen(tcp->io_watcher.fd, backlog))
-//     return -errno;
+  //CODIUS-MOD: Fake socket starts listening from uv__tcp_bind.
+  // if (listen(tcp->io_watcher.fd, backlog))
+  //   return -errno;
 
-//   tcp->connection_cb = cb;
+  tcp->connection_cb = cb;
 
-//   /* Start listening for connections. */
-//   tcp->io_watcher.cb = uv__server_io;
-//   uv__io_start(tcp->loop, &tcp->io_watcher, UV__POLLIN);
+  /* Start listening for connections. */
+  tcp->io_watcher.cb = uv__server_io;
+  uv__io_start(tcp->loop, &tcp->io_watcher, UV__POLLIN);
 
-//   return 0;
-// }
+  return 0;
+}
 
 
 int uv__tcp_nodelay(int fd, int on) {

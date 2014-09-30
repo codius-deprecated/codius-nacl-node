@@ -311,13 +311,10 @@ void TCPWrap::Listen(const FunctionCallbackInfo<Value>& args) {
   HandleScope scope(env->isolate());
 
   TCPWrap* wrap = Unwrap<TCPWrap>(args.Holder());
-
   int backlog = args[0]->Int32Value();
-  //TODO-CODIUS: Add listening for TCP.
-  // int err = uv_listen(reinterpret_cast<uv_stream_t*>(&wrap->handle_),
-  //                     backlog,
-  //                     OnConnection);
-  int err = 0;
+  int err = uv_listen(reinterpret_cast<uv_stream_t*>(&wrap->handle_),
+                      backlog,
+                      OnConnection);
   
   args.GetReturnValue().Set(err);
 }

@@ -1141,14 +1141,17 @@ Server.prototype._listen2 = function(address, port, addressType, backlog, fd) {
 
 
 function listen(self, address, port, addressType, backlog, fd) {
-  if (!cluster) cluster = require('cluster');
+  //CODIUS-MOD: Do not use the 'cluster' module.
+  // if (!cluster) cluster = require('cluster');
 
-  if (cluster.isMaster) {
-    self._listen2(address, port, addressType, backlog, fd);
-    return;
-  }
+  // if (cluster.isMaster) {
+  //   console.log('is master')
+  //   self._listen2(address, port, addressType, backlog, fd);
+  //   return;
+  // }
 
-  cluster._getServer(self, address, port, addressType, fd, cb);
+  // cluster._getServer(self, address, port, addressType, fd, cb);
+  self._listen2(address, port, addressType, backlog, fd);
 
   function cb(err, handle) {
     // EADDRINUSE may not be reported until we call listen(). To complicate

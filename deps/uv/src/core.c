@@ -381,13 +381,14 @@ int uv__socket(int domain, int type, int protocol) {
 }
 
 
-// int uv__accept(int sockfd) {
-//   int peerfd;
-//   int err;
+int uv__accept(int sockfd) {
+  int peerfd;
+  // int err;
 
-//   assert(sockfd >= 0);
-
-//   while (1) {
+  assert(sockfd >= 0);
+  while (1) {
+//CODIUS-MOD: Check if a connection has been made to the socket.
+//            If so, this returns the accepted fd.
 // #if defined(__linux__) || __FreeBSD__ >= 10
 //     static int no_accept4;
 
@@ -426,10 +427,27 @@ int uv__socket(int domain, int type, int protocol) {
 //       uv__close(peerfd);
 //       return err;
 //     }
+    const char* frame = "{\"type\":\"api\",\"api\":\"net\",\"method\":\"accept\",\"data\":[%d]}";
+    char message [UV_SYNC_MAX_MESSAGE_SIZE];
+    int len;
+    len = snprintf (message, UV_SYNC_MAX_MESSAGE_SIZE, frame, sockfd);
+    if (len==-1) {
+      printf("Error forming socket message.");
+      abort();
+    }
+    char *resp_buf;
+    size_t resp_len;
+    int result = codius_sync_call(message, len, &resp_buf, &resp_len);
+    assert(result != -1);
+    peerfd = codius_parse_json_int(resp_buf, resp_len, "result");
+    free(resp_buf);
+    if (peerfd == -1) {
+      return -peerfd;
+    }
 
-//     return peerfd;
-//   }
-// }
+    return peerfd;
+  }
+}
 
 
 int uv__close(int fd) {
