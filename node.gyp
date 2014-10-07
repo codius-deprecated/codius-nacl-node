@@ -312,6 +312,10 @@
           'dependencies': [ 'deps/codius-util/codius-util.gyp:codius-util' ],
         }],
 
+        [ 'node_use_nacl=="false"', {
+          'libraries': [ '-lseccomp' ],
+        }],
+
         [ 'OS=="win"', {
           'sources': [
             'src/res/node.rc',

@@ -1985,6 +1985,11 @@ static void ParseArgs(int* argc,
   *argc = static_cast<int>(new_argc);
 }
 
+//CODIUS-MOD: Do not use /dev/urandom for V8's entropy.
+static bool GetEntropySource (unsigned char* buffer, size_t buflen) {
+  return RAND_pseudo_bytes(buffer, buflen);
+}
+
 void Init(int* argc,
           const char** argv,
           int* exec_argc,
@@ -2029,6 +2034,9 @@ void Init(int* argc,
   node_isolate = Isolate::GetCurrent();
 
   V8::SetFatalErrorHandler(node::OnFatalError);
+
+  //CODIUS-MOD: Do not use /dev/urandom for V8's entropy.
+  V8::SetEntropySource(GetEntropySource);
   V8::AddMessageListener(OnMessage);
 }
 

@@ -16,9 +16,7 @@ var RUN_CONTRACT_LIBS = [
 ]
 var RUN_CONTRACT_ARGS = [
   '-h', 
-  '3:3', 
-  '-h',
-  '4:4',
+  '3:3',
   '-a', 
   '--', 
   NACL_SDK_ROOT + '/toolchain/linux_x86_glibc/x86_64-nacl/lib32/runnable-ld.so', 
@@ -91,26 +89,48 @@ Sandbox.prototype.run = function(manifest_hash, file_path) {
 // }
 
 Sandbox.prototype.spawnChildToRunCode = function (code, disableNaCl) {
+  if (typeof disableNaCl==='string') {
+    disableNaCl = parseInt(disableNaCl);
+  }
+
 	var cmd = disableNaCl ? RUN_CONTRACT_COMMAND_NONACL : RUN_CONTRACT_COMMAND;
 	var args = disableNaCl ? RUN_CONTRACT_ARGS_NONACL.slice() : RUN_CONTRACT_ARGS.slice();
+
 	args.push(code);
 	
+	var env = {};
+
+	// Use seccomp instead of NaCl
+	if (disableNaCl) {
+		env = {
+	  	LD_PRELOAD:'/home/brandon/test/codius-lang-js/sandbox.so'
+	  }
+	}
+
 	if (this._enableGdb) {
 		args.unshift(cmd);
 		args.unshift('localhost:4483');
+		if (disableNaCl) {
+		  env = {};
+			args.unshift('--');
+			args.unshift('LD_PRELOAD=/home/brandon/test/codius-lang-js/sandbox.so');
+			args.unshift('env');
+			args.unshift('--wrapper');
+		}
 		cmd = 'gdbserver';
 	} else if (this._enableValgrind) {
 		args.unshift('--');
 		args.unshift(cmd);
+		args.unshift('--leak-check=full');
 		cmd = 'valgrind';
 	}
 
 	var child = spawn(cmd, args, {
+	  env: env,
 	  stdio: [
 	    'pipe',
 	    'pipe',
 	    'pipe',
-	    'pipe', 
 	    'pipe'
 	    ] 
 	  });
