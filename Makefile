@@ -34,7 +34,7 @@ endif
 # to check for changes.
 .PHONY: codius_node codius_node_g codius_node.nexe codius_node_g.nexe
 
-sandbox.so: sandbox.c out/Makefile
+sandbox.so: deps/codius-sandbox/inject.c out/Makefile
 	gcc $< -shared -fPIC -m32 -o $@ `pkg-config --libs --cflags libseccomp` -ldl -g
 
 ifeq ($(USE_NINJA),1)
