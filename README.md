@@ -20,7 +20,7 @@ node test.js
 To run plain without outside JS:
 
 ```sh
-$NACL_SDK_ROOT/tools/sel_ldr_x86_32 -h 3:3 -h 4:4 -a -- $NACL_SDK_ROOT/toolchain/linux_x86_glibc/x86_64-nacl/lib32/runnable-ld.so --library-path .:deps/v8/out/nacl_ia32.release/lib.target:$NACL_SDK_ROOT/ports/lib/glibc_x86_32/Release:$NACL_SDK_ROOT/toolchain/linux_x86_glibc/x86_64-nacl/lib32 ./codius_node.nexe
+$NACL_SDK_ROOT/tools/sel_ldr_x86_32 -h 3:3 -a -- $NACL_SDK_ROOT/toolchain/linux_x86_glibc/x86_64-nacl/lib32/runnable-ld.so --library-path .:deps/v8/out/nacl_ia32.release/lib.target:$NACL_SDK_ROOT/ports/lib/glibc_x86_32/Release:$NACL_SDK_ROOT/toolchain/linux_x86_glibc/x86_64-nacl/lib32 ./codius_node.nexe
 ```
 
 ### To build NaCl-sandboxed Node.js-lite
@@ -51,21 +51,14 @@ Prerequisites:
 + Linux
 + Build essentials
 + zlib (32-bit version, e.g. `lib32z1-dev`)
++ libseccomp-dev:i386
 + stream-parser
 
-```sh
-cd deps/v8
-make dependencies
-make library=shared i18nsupport=off ia32.debug
-make library=shared i18nsupport=off ia32.release
-```
-
-Build Node.js-lite executable with V8:
+Build Node.js-lite executable that uses seccomp instead of Native Client:
 
 ```sh
 source ./codius-configure
 make
-export NONACL=1
 ```
 
 This will create an executable called `codius_node`.
