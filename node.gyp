@@ -11,6 +11,7 @@
     'node_shared_cares%': 'false',
     'node_shared_libuv%': 'false',
     'node_shared_codius_util%': 'false',
+    'node_shared_codius_sandbox%': 'false',
     'node_use_openssl%': 'true',
     'node_use_nacl%': 'true',
     'node_shared_openssl%': 'false',
@@ -314,6 +315,7 @@
 
         [ 'node_use_nacl=="false"', {
           'libraries': [ '-lseccomp' ],
+          'dependencies': [ 'deps/codius-sandbox/sandbox.gyp:codius-sandbox' ],
         }],
 
         [ 'OS=="win"', {
