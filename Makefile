@@ -23,19 +23,16 @@ endif
 # BUILDTYPE=Debug builds both release and debug builds. If you want to compile
 # just the debug build, run `make -C out BUILDTYPE=Debug` instead.
 ifeq ($(BUILDTYPE),Release)
-all: sandbox.so out/Makefile codius_node
+all: out/Makefile codius_node
 nacl: out/Makefile codius_node.nexe
 else
-all: sandbox.so out/Makefile codius_node codius_node_g
+all: out/Makefile codius_node codius_node_g
 nacl: out/Makefile codius_node.nexe codius_node_g.nexe
 endif
 
 # The .PHONY is needed to ensure that we recursively use the out/Makefile
 # to check for changes.
 .PHONY: codius_node codius_node_g codius_node.nexe codius_node_g.nexe
-
-sandbox.so: sandbox.c out/Makefile
-	gcc $< -shared -fPIC -m32 -o $@ `pkg-config --libs --cflags libseccomp` -ldl -g
 
 ifeq ($(USE_NINJA),1)
 codius_node: config.gypi
