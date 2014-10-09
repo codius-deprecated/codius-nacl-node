@@ -45,6 +45,13 @@
 #include <sys/time.h>
 #include <unistd.h>
 
+#ifdef __APPLE__
+#include <crt_externs.h>
+#define environ (*_NSGetEnviron())
+#elif !defined(_MSC_VER)
+extern char **environ;
+#endif
+
 namespace node {
 
 using v8::Array;
@@ -1531,6 +1538,167 @@ static void Binding(const FunctionCallbackInfo<Value>& args) {
   args.GetReturnValue().Set(exports);
 }
 
+static void EnvGetter(Local<String> property,
+                      const PropertyCallbackInfo<Value>& info) {
+  Environment* env = Environment::GetCurrent(info.GetIsolate());
+  HandleScope scope(env->isolate());
+#ifdef __POSIX__
+  node::Utf8Value key(property);
+  const char* val = getenv(*key);
+  if (val) {
+    return info.GetReturnValue().Set(String::NewFromUtf8(env->isolate(), val));
+  }
+#else  // _WIN32
+  String::Value key(property);
+  WCHAR buffer[32767];  // The maximum size allowed for environment variables.
+  DWORD result = GetEnvironmentVariableW(reinterpret_cast<WCHAR*>(*key),
+                                         buffer,
+                                         ARRAY_SIZE(buffer));
+  // If result >= sizeof buffer the buffer was too small. That should never
+  // happen. If result == 0 and result != ERROR_SUCCESS the variable was not
+  // not found.
+  if ((result > 0 || GetLastError() == ERROR_SUCCESS) &&
+      result < ARRAY_SIZE(buffer)) {
+    const uint16_t* two_byte_buffer = reinterpret_cast<const uint16_t*>(buffer);
+    Local<String> rc = String::NewFromTwoByte(env->isolate(), two_byte_buffer);
+    return info.GetReturnValue().Set(rc);
+  }
+#endif
+  // Not found.  Fetch from prototype.
+  info.GetReturnValue().Set(
+      info.Data().As<Object>()->Get(property));
+}
+
+
+static void EnvSetter(Local<String> property,
+                      Local<Value> value,
+                      const PropertyCallbackInfo<Value>& info) {
+  Environment* env = Environment::GetCurrent(info.GetIsolate());
+  HandleScope scope(env->isolate());
+#ifdef __POSIX__
+  node::Utf8Value key(property);
+  node::Utf8Value val(value);
+  setenv(*key, *val, 1);
+#else  // _WIN32
+  String::Value key(property);
+  String::Value val(value);
+  WCHAR* key_ptr = reinterpret_cast<WCHAR*>(*key);
+  // Environment variables that start with '=' are read-only.
+  if (key_ptr[0] != L'=') {
+    SetEnvironmentVariableW(key_ptr, reinterpret_cast<WCHAR*>(*val));
+  }
+#endif
+  // Whether it worked or not, always return rval.
+  info.GetReturnValue().Set(value);
+}
+
+
+static void EnvQuery(Local<String> property,
+                     const PropertyCallbackInfo<Integer>& info) {
+  Environment* env = Environment::GetCurrent(info.GetIsolate());
+  HandleScope scope(env->isolate());
+  int32_t rc = -1;  // Not found unless proven otherwise.
+#ifdef __POSIX__
+  node::Utf8Value key(property);
+  if (getenv(*key))
+    rc = 0;
+#else  // _WIN32
+  String::Value key(property);
+  WCHAR* key_ptr = reinterpret_cast<WCHAR*>(*key);
+  if (GetEnvironmentVariableW(key_ptr, NULL, 0) > 0 ||
+      GetLastError() == ERROR_SUCCESS) {
+    rc = 0;
+    if (key_ptr[0] == L'=') {
+      // Environment variables that start with '=' are hidden and read-only.
+      rc = static_cast<int32_t>(v8::ReadOnly) |
+           static_cast<int32_t>(v8::DontDelete) |
+           static_cast<int32_t>(v8::DontEnum);
+    }
+  }
+#endif
+  if (rc != -1)
+    info.GetReturnValue().Set(rc);
+}
+
+
+static void EnvDeleter(Local<String> property,
+                       const PropertyCallbackInfo<Boolean>& info) {
+  Environment* env = Environment::GetCurrent(info.GetIsolate());
+  HandleScope scope(env->isolate());
+  bool rc = true;
+#ifdef __POSIX__
+  node::Utf8Value key(property);
+  rc = getenv(*key) != NULL;
+  if (rc)
+    unsetenv(*key);
+#else
+  String::Value key(property);
+  WCHAR* key_ptr = reinterpret_cast<WCHAR*>(*key);
+  if (key_ptr[0] == L'=' || !SetEnvironmentVariableW(key_ptr, NULL)) {
+    // Deletion failed. Return true if the key wasn't there in the first place,
+    // false if it is still there.
+    rc = GetEnvironmentVariableW(key_ptr, NULL, NULL) == 0 &&
+         GetLastError() != ERROR_SUCCESS;
+  }
+#endif
+  info.GetReturnValue().Set(rc);
+}
+
+
+static void EnvEnumerator(const PropertyCallbackInfo<Array>& info) {
+  Environment* env = Environment::GetCurrent(info.GetIsolate());
+  HandleScope scope(env->isolate());
+#ifdef __POSIX__
+  int size = 0;
+  while (environ[size])
+    size++;
+
+  Local<Array> envarr = Array::New(env->isolate(), size);
+
+  for (int i = 0; i < size; ++i) {
+    const char* var = environ[i];
+    const char* s = strchr(var, '=');
+    const int length = s ? s - var : strlen(var);
+    Local<String> name = String::NewFromUtf8(env->isolate(),
+                                             var,
+                                             String::kNormalString,
+                                             length);
+    envarr->Set(i, name);
+  }
+#else  // _WIN32
+  WCHAR* environment = GetEnvironmentStringsW();
+  if (environment == NULL)
+    return;  // This should not happen.
+  Local<Array> envarr = Array::New(env->isolate());
+  WCHAR* p = environment;
+  int i = 0;
+  while (*p != NULL) {
+    WCHAR *s;
+    if (*p == L'=') {
+      // If the key starts with '=' it is a hidden environment variable.
+      p += wcslen(p) + 1;
+      continue;
+    } else {
+      s = wcschr(p, L'=');
+    }
+    if (!s) {
+      s = p + wcslen(p);
+    }
+    const uint16_t* two_byte_buffer = reinterpret_cast<const uint16_t*>(p);
+    const size_t two_byte_buffer_len = s - p;
+    Local<String> value = String::NewFromTwoByte(env->isolate(),
+                                                 two_byte_buffer,
+                                                 String::kNormalString,
+                                                 two_byte_buffer_len);
+    envarr->Set(i++, value);
+    p = s + wcslen(s) + 1;
+  }
+  FreeEnvironmentStringsW(environment);
+#endif
+
+  info.GetReturnValue().Set(envarr);
+}
+
 static Handle<Object> GetFeatures(Environment* env) {
   EscapableHandleScope scope(env->isolate());
 
@@ -1627,7 +1795,7 @@ void SetupProcessObject(Environment* env,
 
   Local<Object> process = env->process_object();
 
-  process->Set(env->title_string(), FIXED_ONE_BYTE_STRING(env->isolate(), "node-nacl"));
+  process->Set(env->title_string(), FIXED_ONE_BYTE_STRING(env->isolate(), "codius_node"));
 
   // process.version
   READONLY_PROPERTY(process,
@@ -1717,8 +1885,7 @@ void SetupProcessObject(Environment* env,
   process->Set(env->exec_argv_string(), exec_arguments);
 
   // create process.env
-  // TODO-CODIUS: Enable
-  /*Local<ObjectTemplate> process_env_template =
+  Local<ObjectTemplate> process_env_template =
       ObjectTemplate::New(env->isolate());
   process_env_template->SetNamedPropertyHandler(EnvGetter,
                                                 EnvSetter,
@@ -1727,9 +1894,7 @@ void SetupProcessObject(Environment* env,
                                                 EnvEnumerator,
                                                 Object::New(env->isolate()));
   Local<Object> process_env = process_env_template->NewInstance();
-  process->Set(env->env_string(), process_env);*/
-
-  process->Set(env->env_string(), Object::New(env->isolate()));
+  process->Set(env->env_string(), process_env);
 
   READONLY_PROPERTY(process, "pid", Integer::New(env->isolate(), getpid()));
   READONLY_PROPERTY(process, "features", GetFeatures(env));

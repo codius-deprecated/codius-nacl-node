@@ -90,8 +90,11 @@ Sandbox.prototype.spawnChildToRunCode = function (code, disableNaCl) {
 		args.unshift('--leak-check=full');
 		cmd = 'valgrind';
 	}
-	
+  var env = {
+    TEST:'/this/test/file'
+  }
 	var child = spawn(cmd, args, {
+    env: env,
 	  stdio: [
 	    'pipe',
 	    'pipe',
