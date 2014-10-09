@@ -22,6 +22,7 @@
 #include "uv.h"
 #include "internal.h"
 #include "codius-util.h"
+#include <netinet/in.h>
 
 #include <stdlib.h>
 #include <unistd.h>
@@ -222,7 +223,7 @@ int uv_tcp_getsockname(const uv_tcp_t* handle,
 int uv_tcp_getpeername(const uv_tcp_t* handle,
                        struct sockaddr* name,
                        int* namelen) {
-  socklen_t socklen;
+  // socklen_t socklen;
 
   if (handle->delayed_error)
     return handle->delayed_error;
@@ -231,12 +232,87 @@ int uv_tcp_getpeername(const uv_tcp_t* handle,
     return -EINVAL;  /* FIXME(bnoordhuis) -EBADF */
 
   /* sizeof(socklen_t) != sizeof(int) on some systems. */
-  socklen = (socklen_t) *namelen;
+  // socklen = (socklen_t) *namelen;
 
-  if (getpeername(uv__stream_fd(handle), name, &socklen))
-    return -errno;
+  //CODIUS-MOD: Call outside the sandbox for getpeername.
+  //            Form a sockaddr_in with the family, port & address,
+  //            then cast to sockaddr.
+  // if (getpeername(uv__stream_fd(handle), name, &socklen))
+  //   return -errno;
 
-  *namelen = (int) socklen;
+  //*namelen = (int) socklen;
+
+  struct sockaddr_in ip4_addr;
+
+  memset (&ip4_addr, 0, sizeof(ip4_addr));
+
+  const char* frame = "{\"type\":\"api\",\"api\":\"net\",\"method\":\"getRemoteFamily\",\"data\":[%d]}";
+  char message [UV_SYNC_MAX_MESSAGE_SIZE];
+  int len;
+  len = snprintf(message, UV_SYNC_MAX_MESSAGE_SIZE, frame, uv__stream_fd(handle));
+  if (len==-1) {
+    printf("Error forming getRemoteFamily message.");
+    abort();
+  }
+  char *resp_buf;
+  size_t resp_len;
+  int result = codius_sync_call(message, len, &resp_buf, &resp_len);
+  assert(result != -1);
+  codius_parse_json_int(resp_buf, resp_len, "result");
+  ip4_addr.sin_family = codius_parse_json_int(resp_buf, resp_len, "result");
+  
+  free(resp_buf);
+
+  frame = "{\"type\":\"api\",\"api\":\"net\",\"method\":\"getRemotePort\",\"data\":[%d]}";
+  len = snprintf (message, UV_SYNC_MAX_MESSAGE_SIZE, frame, uv__stream_fd(handle));
+  if (len==-1) {
+    printf("Error forming getRemotePort message.");
+    abort();
+  }
+  result = codius_sync_call(message, len, &resp_buf, &resp_len);
+  assert(result != -1);
+  codius_parse_json_int(resp_buf, resp_len, "result");
+  ip4_addr.sin_port = htons(codius_parse_json_int(resp_buf, resp_len, "result"));
+  
+  free(resp_buf);
+
+  frame = "{\"type\":\"api\",\"api\":\"net\",\"method\":\"getRemoteAddress\",\"data\":[%d]}";
+  len = snprintf (message, UV_SYNC_MAX_MESSAGE_SIZE, frame, uv__stream_fd(handle));
+  if (len==-1) {
+    printf("Error forming getremoteaddress message.");
+    abort();
+  }
+  
+  result = codius_sync_call(message, len, &resp_buf, &resp_len);
+  assert(result != -1);
+  jsmntype_t result_type = codius_parse_json_type(resp_buf, resp_len, "result");
+  if (result_type == JSMN_STRING) {
+    char address[15];
+    memset(&address, 0, sizeof(address));
+    len = codius_parse_json_str(resp_buf, resp_len, "result", &address, 14);
+    assert(len >0);
+    assert(len <= 14);
+
+    inet_pton(ip4_addr.sin_family, &address, &ip4_addr.sin_addr);
+
+    struct sockaddr *socket_addr = (struct sockaddr *)&ip4_addr;
+    name->sa_family = socket_addr->sa_family;
+    int i;
+    for (i=0; i<sizeof(socket_addr->sa_data); i++) {
+      name->sa_data[i] = socket_addr->sa_data[i];
+    }
+
+    *namelen = sizeof(*name);
+  } else {
+    len = codius_parse_json_int(resp_buf, resp_len, "result");    
+    if (len < 0) {
+      errno = -len;
+    }
+    return len;
+  }
+  
+  free(resp_buf);
+
   return 0;
 }
 
