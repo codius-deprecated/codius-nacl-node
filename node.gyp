@@ -10,8 +10,7 @@
     'node_shared_http_parser%': 'false',
     'node_shared_cares%': 'false',
     'node_shared_libuv%': 'false',
-    'node_shared_codius_util%': 'false',
-    'node_shared_codius_sandbox%': 'false',
+    'node_shared_codius_sandbox_rpc%': 'false',
     'node_use_openssl%': 'true',
     'node_use_nacl%': 'true',
     'node_shared_openssl%': 'false',
@@ -309,8 +308,8 @@
           'dependencies': [ 'deps/uv/uv.gyp:libuv' ],
         }],
 
-        [ 'node_shared_codius_util=="false"', {
-          'dependencies': [ 'deps/codius-util/codius-util.gyp:codius-util' ],
+        [ 'node_shared_codius_sandbox_rpc=="false"', {
+          'dependencies': [ 'deps/codius-sandbox/sandbox.gyp:codius-sandbox-rpc' ],
         }],
 
         [ 'node_use_nacl=="false"', {
