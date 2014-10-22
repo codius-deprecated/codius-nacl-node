@@ -102,13 +102,34 @@ int uv__tcp_bind(uv_tcp_t* tcp,
   // TODO-CODIUS: We're about to cast addr to a sockaddr_in, which is only possible
   //              if the family is IPv4. For IPv6 that next section will have to
   //              be different.
-  assert(addr->sa_family == AF_INET);
 
-  const char* frame = "{\"type\":\"api\",\"api\":\"net\",\"method\":\"bind\",\"data\":[%d, %d, %d, %d]}";
+  char ip[INET6_ADDRSTRLEN];
+  const struct sockaddr_in *a4;
+  const struct sockaddr_in6 *a6;
+  int port;
+
+  switch (addr->sa_family) {
+  case AF_INET6:
+    a6 = (const struct sockaddr_in6*)(addr);
+    uv_inet_ntop(AF_INET6, &a6->sin6_addr, ip, sizeof ip);
+    port = ntohs(a6->sin6_port);
+    break;
+
+  case AF_INET:
+    a4 = (const struct sockaddr_in*)(addr);
+    uv_inet_ntop(AF_INET, &a4->sin_addr, ip, sizeof ip);
+    port = ntohs(a4->sin_port);
+    break;
+
+  default:
+    assert(0);
+  }
+
+  const char* frame = "{\"type\":\"api\",\"api\":\"net\",\"method\":\"bind\",\"data\":[%d, %d, \"%s\", %d]}";
   char message [UV_SYNC_MAX_MESSAGE_SIZE];
   int len;
-  len = snprintf (message, UV_SYNC_MAX_MESSAGE_SIZE, frame, tcp->io_watcher.fd, addr->sa_family, 
-                  ((struct sockaddr_in*)addr)->sin_addr.s_addr, ((struct sockaddr_in*)addr)->sin_port);
+  len = snprintf (message, UV_SYNC_MAX_MESSAGE_SIZE, frame, tcp->io_watcher.fd, addr->sa_family,
+                  ip, port);
   if (len==-1) {
     printf("Error forming socket message.");
     abort();
