@@ -804,7 +804,9 @@
               ]
             },
             'sources': [  ### gcmole(os:linux) ###
-              '../../src/platform-linux.cc',
+              # CODIUS-MOD: Use codius platform file.
+              # '../../src/platform-linux.cc',
+              '../../src/platform-codius.cc',
               '../../src/platform-posix.cc'
             ],
           }
