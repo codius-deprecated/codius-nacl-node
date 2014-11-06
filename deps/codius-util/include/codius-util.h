@@ -2,6 +2,7 @@
 #define __CODIUS_UTIL_H_
 
 #include "jsmn.h"
+#include <time.h>
 
 // 129 KB
 #define CODIUS_MAX_MESSAGE_SIZE 132096
@@ -29,6 +30,11 @@ int codius_parse_json_int(char *js, size_t len, const char *field_name);
  * Get the string that is present in the result field.
  */
 int codius_parse_json_str(char *js, size_t len, const char *field_name, char *buf, size_t buf_size);
+
+/**
+ * Get the struct tm that is present in the result field.
+ */
+int codius_parse_json_tm(char *js, size_t len, const char *field_name, struct tm *t);
 
 #ifdef __cplusplus
 }

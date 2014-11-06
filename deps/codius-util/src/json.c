@@ -154,7 +154,7 @@ int codius_parse_json_int(char *js, size_t len, const char *field_name) {
 
   jsmntok_t *tokens = json_tokenise(js, len);
 
-  jsmntok_t t = codius_json_find_token(js, len, tokens, "result");
+  jsmntok_t t = codius_json_find_token(js, len, tokens, field_name);
 
   if (t.start == 0 && t.end == 0) {
     printf("Invalid response: token '%s' not found.", field_name);
@@ -184,7 +184,7 @@ int codius_parse_json_str(char *js, size_t len, const char *field_name, char *bu
   
   jsmntok_t *tokens = json_tokenise(js, len);
 
-  jsmntok_t t = codius_json_find_token(js, len, tokens, "result");
+  jsmntok_t t = codius_json_find_token(js, len, tokens, field_name);
 
   if (t.start == 0 && t.end == 0) {
     printf("Invalid response: token '%s' not found.\n", field_name);
@@ -205,4 +205,43 @@ int codius_parse_json_str(char *js, size_t len, const char *field_name, char *bu
   free(tokens);
 
   return t.end-t.start;
+}
+
+// Returns -1 for error.
+int codius_parse_json_tm(char *js, size_t len, const char *field_name, struct tm *t) {
+  if (len==0 || js==NULL) return -1;
+
+  jsmntok_t *tokens = json_tokenise(js, len);
+
+  jsmntok_t token = codius_json_find_token(js, len, tokens, field_name);
+
+  if (token.start == 0 && token.end == 0) {
+    printf("Invalid response: token '%s' not found.", field_name);
+    fflush(stdout);
+    abort();
+  }
+
+  if (token.type != JSMN_OBJECT) {
+    printf("Invalid response: field value must be an object.");
+    fflush(stdout);
+    abort();
+  }
+
+  char *field = js+token.start;
+  t->tm_sec = codius_parse_json_int(field, token.end-token.start, "tm_sec");
+  t->tm_min = codius_parse_json_int(field, token.end-token.start, "tm_min");
+  t->tm_hour = codius_parse_json_int(field, token.end-token.start, "tm_hour");
+  t->tm_mday = codius_parse_json_int(field, token.end-token.start, "tm_mday");
+  t->tm_mon = codius_parse_json_int(field, token.end-token.start, "tm_mon");
+  t->tm_year = codius_parse_json_int(field, token.end-token.start, "tm_year");
+  t->tm_wday = codius_parse_json_int(field, token.end-token.start, "tm_wday");
+  t->tm_yday = codius_parse_json_int(field, token.end-token.start, "tm_yday");
+  t->tm_isdst = codius_parse_json_int(field, token.end-token.start, "tm_isdst");
+  t->tm_gmtoff = codius_parse_json_int(field, token.end-token.start, "tm_gmtoff");
+  
+  //TODO-CODIUS: Get "tm_zone" string.
+
+  free(tokens);
+  
+  return 0;
 }
