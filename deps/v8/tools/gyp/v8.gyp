@@ -239,6 +239,7 @@
       'type': 'static_library',
       'dependencies': [
         'v8_libbase.<(v8_target_arch)',
+        '../../../codius-util/codius-util.gyp:codius-util',
       ],
       'variables': {
         'optimize': 'max',

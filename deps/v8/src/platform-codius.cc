@@ -45,7 +45,7 @@
 
 #include "platform.h"
 #include "v8threads.h"
-
+#include "codius-util.h"
 
 namespace v8 {
 namespace internal {
@@ -104,11 +104,32 @@ const char* OS::LocalTimezone(double time, TimezoneCache* cache) {
 
 
 double OS::LocalTimeOffset(TimezoneCache* cache) {
-  time_t tv = time(NULL);
-  struct tm* t = localtime(&tv);
-  // tm_gmtoff includes any daylight savings offset, so subtract it.
-  return static_cast<double>(t->tm_gmtoff * msPerSecond -
-                             (t->tm_isdst > 0 ? 3600 * msPerSecond : 0));
+  //CODIUS-MOD: Get localtime via IPC. Do NOT open /etc/localtime
+  // time_t tv = time(NULL);
+  // struct tm* d = localtime(&tv);
+  // // tm_gmtoff includes any daylight savings offset, so subtract it.
+  // return static_cast<double>(d->tm_gmtoff * msPerSecond -
+  //                            (d->tm_isdst > 0 ? 3600 * msPerSecond : 0));
+
+  struct tm t;  
+  char *resp_buf;
+  size_t resp_len;
+  const char* message = "{\"type\":\"api\",\"api\":\"time\",\"method\":\"localtime\",\"data\":[]}";
+
+  int call_result = codius_sync_call(message, strlen(message), &resp_buf, &resp_len);
+  if (call_result == -1) {
+    return 0;
+  }
+  int result = codius_parse_json_tm(resp_buf, resp_len, "result", &t);
+  if (result == -1) {
+    printf("Failed to get localtime offset.\n");
+    fflush(stdout);
+    return 0;
+  }
+  free(resp_buf);
+
+  return static_cast<double>(t.tm_gmtoff * msPerSecond -
+                             (t.tm_isdst > 0 ? 3600 * msPerSecond : 0));
 }
 
 

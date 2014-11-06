@@ -45,6 +45,7 @@
 
 #include "isolate-inl.h"
 #include "platform.h"
+#include "codius-util.h"
 
 namespace v8 {
 namespace internal {
@@ -332,12 +333,33 @@ void OS::ClearTimezoneCache(TimezoneCache* cache) {
 }
 
 
+//TODO-CODIUS: Consolidate platform-linux.cc & platform-posix.cc into platform-codius.cc?
 double OS::DaylightSavingsOffset(double time, TimezoneCache*) {
-  if (std::isnan(time)) return nan_value();
-  time_t tv = static_cast<time_t>(std::floor(time/msPerSecond));
-  struct tm* t = localtime(&tv);
-  if (NULL == t) return nan_value();
-  return t->tm_isdst > 0 ? 3600 * msPerSecond : 0;
+  //CODIUS-MOD: Get localtime via IPC. Do NOT open /etc/localtime
+  // if (std::isnan(time)) return nan_value();
+  // time_t tv = static_cast<time_t>(std::floor(time/msPerSecond));
+  // struct tm* t = localtime(&tv);
+  // if (NULL == t) return nan_value();
+  // return t->tm_isdst > 0 ? 3600 * msPerSecond : 0;
+
+  struct tm t;  
+  char *resp_buf;
+  size_t resp_len;
+  const char* message = "{\"type\":\"api\",\"api\":\"time\",\"method\":\"localtime\",\"data\":[]}";
+
+  int call_result = codius_sync_call(message, strlen(message), &resp_buf, &resp_len);
+  if (call_result == -1) {
+    return 0;
+  }
+  int result = codius_parse_json_tm(resp_buf, resp_len, "result", &t);
+  if (result == -1) {
+    printf("Failed to get localtime offset.\n");
+    fflush(stdout);
+    return 0;
+  }
+  free(resp_buf);
+
+  return t.tm_isdst > 0 ? 3600 * msPerSecond : 0;
 }
 
 
