@@ -916,10 +916,7 @@ static void uv__read(uv_stream_t* stream) {
           uv__io_start(stream->loop, &stream->io_watcher, UV__POLLIN);
           uv__stream_osx_interrupt_select(stream);
         }
-        //CODIUS-MOD: Since we do nonblocking reads instead of polling,
-        //            we would be calling read_cb with nread=0 a lot.
-        //stream->read_cb(stream, 0, &buf);
-        free(buf.base);
+        stream->read_cb(stream, 0, &buf);
       } else {
         /* Error. User should call uv_close(). */
         stream->read_cb(stream, -errno, &buf);
