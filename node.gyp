@@ -28,7 +28,7 @@
       'src/js/constants.js',
       'src/js/crypto.js',
       # 'src/js/cluster.js',
-      # 'src/js/dgram.js',
+      'src/js/dgram.js',
       'src/js/dns.js',
       # 'src/js/domain.js',
       'src/js/events.js',

@@ -19,6 +19,9 @@
 // OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
 // USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+//TODO-CODIUS: Implement udp_wrap
+return;
+
 var assert = require('assert');
 var util = require('util');
 var events = require('events');
