@@ -11,7 +11,8 @@
   'targets': [
     {
       'target_name': 'codius-util',
-      'type': '<(library)',
+      'type': 'static_library',
+      'toolsets': ['host','target'],
       'sources': [
         'include/codius-util.h',
         'src/json.c',

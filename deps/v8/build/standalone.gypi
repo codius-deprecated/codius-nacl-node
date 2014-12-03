@@ -201,7 +201,8 @@
         'ldflags': [ '-pthread', ],
         'conditions': [
           [ 'OS=="linux"', {
-            'cflags': [ '-ansi' ],
+            #CODIUS-MOD: Disable ansi flag for building codius-util with NaCl
+            #'cflags': [ '-ansi' ],
           }],
           [ 'visibility=="hidden" and v8_enable_backtrace==0', {
             'cflags': [ '-fvisibility=hidden' ],
