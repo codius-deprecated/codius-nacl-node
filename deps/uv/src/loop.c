@@ -108,9 +108,9 @@ static int uv__loop_init(uv_loop_t* loop, int default_loop) {
   heap_init((struct heap*) &loop->timer_heap);
   // QUEUE_INIT(&loop->wq);
   QUEUE_INIT(&loop->active_reqs);
-  // QUEUE_INIT(&loop->idle_handles);
+  QUEUE_INIT(&loop->idle_handles);
   // QUEUE_INIT(&loop->async_handles);
-  // QUEUE_INIT(&loop->check_handles);
+  QUEUE_INIT(&loop->check_handles);
   // QUEUE_INIT(&loop->prepare_handles);
   QUEUE_INIT(&loop->handle_queue);
 

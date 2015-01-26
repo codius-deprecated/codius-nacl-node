@@ -288,9 +288,9 @@ int uv_run(uv_loop_t* loop, uv_run_mode mode) {
     uv__update_time(loop);
     uv__run_timers(loop);
     uv__run_pending(loop);
+    uv__run_idle(loop);
 
-    //CODIUS-MOD: These can probably be re-added.
-    //uv__run_idle(loop);      
+    //CODIUS-MOD: This can probably be re-added.
     //uv__run_prepare(loop);
 
     timeout = 0;
@@ -299,7 +299,7 @@ int uv_run(uv_loop_t* loop, uv_run_mode mode) {
 
     uv__io_poll(loop, timeout);
     
-    //uv__run_check(loop);
+    uv__run_check(loop);
     uv__run_closing_handles(loop);
     
     if (mode == UV_RUN_ONCE) {
