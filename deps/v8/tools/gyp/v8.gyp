@@ -1,4 +1,5 @@
 # Copyright 2012 the V8 project authors. All rights reserved.
+# Copyright (c) 2014 Ripple Labs Inc.
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are
 # met:
